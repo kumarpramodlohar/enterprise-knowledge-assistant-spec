@@ -7,7 +7,7 @@
 **Specification:** [spec.md](./spec.md)
 **Implementation plan:** [plan.md](./plan.md)
 
-> All tasks below are proposed and not started. Target paths describe likely areas based on the repositories inspected; confirm exact file locations and conventions before implementation. Do not mark a task complete until its implementation, tests, and acceptance evidence are verified.
+> T01–T17 and T20 are done (2026-10-11). T18 and T19 are blocked; their implementation and verification evidence, along with the outstanding blockers, are recorded below. Target paths describe likely areas based on the repositories inspected; confirm exact file locations and conventions before implementation. Do not mark a task complete until its implementation, tests, and acceptance evidence are verified.
 
 ## Status and Task Rules
 
@@ -22,25 +22,26 @@
 
 | ID | Task | Repository | Depends on | Specification trace | Status |
 |---|---|---|---|---|---|
-| T01 | Resolve technical baseline and repository ownership | Specification | — | Plan §2, §6, §10 | Not started |
-| T02 | Align backend dependencies and externalized configuration | Backend | T01 | FR-08, AC-12 | Not started |
-| T03 | Establish local PostgreSQL/pgvector and migrations | Backend / Platform | T01, T02 | FR-03, FR-06, AC-05, AC-09 | Not started |
-| T04 | Implement authentication, authorization, and safe API foundations | Backend | T02, T03 | FR-01, AC-01 | Not started |
-| T05 | Define and verify API contracts | Specification / Backend / Frontend | T01, T04 | FR-02–FR-07, AC-02–AC-12 | Not started |
-| T06 | Implement supported document extraction | Backend | T02 | FR-03, AC-05 | Not started |
-| T07 | Implement stable chunking and source metadata | Backend | T03, T06 | FR-03, AC-05 | Not started |
-| T08 | Implement embedding and pgvector persistence | Backend | T02, T03, T07 | FR-03, FR-06, AC-05, AC-09 | Not started |
-| T09 | Implement upload API, validation, and duplicate detection | Backend | T03–T05 | FR-02, AC-02–AC-04 | Not started |
-| T10 | Implement durable ingestion processing and recovery | Backend | T06–T09 | FR-03, FR-04, AC-05, AC-06 | Not started |
-| T11 | Implement document status, retry, re-index, deletion, and purge APIs | Backend | T04, T05, T10 | FR-04, FR-05, AC-06–AC-07 | Not started |
-| T12 | Build frontend foundation and typed API integration | Frontend | T05 | FR-01–FR-07, AC-14 | Not started |
-| T13 | Build upload and document-management UI | Frontend | T11, T12 | FR-02, FR-04, FR-05, AC-02–AC-07, AC-14 | Not started |
-| T14 | Implement authorization-scoped semantic retrieval | Backend | T03–T05, T08, T10 | FR-06, AC-08–AC-09 | Not started |
-| T15 | Implement evidence policy and grounded answer orchestration | Backend | T02, T14 | FR-07, AC-10–AC-11 | Not started |
-| T16 | Implement chat API and validated citations | Backend | T04, T05, T14, T15 | FR-06–FR-07, AC-08–AC-12 | Not started |
-| T17 | Build assistant, answer, and citation UI | Frontend | T12, T16 | FR-06–FR-07, AC-08–AC-11, AC-14 | Not started |
-| T18 | Add cross-cutting security, evaluation, and end-to-end coverage | Backend / Frontend / QA | T09–T17 | AC-01–AC-14 | Not started |
-| T19 | Document and verify local setup and release readiness | Specification / Backend / Frontend | T02–T18 | FR-08, AC-12–AC-14 | Not started |
+| T01 | Resolve technical baseline and repository ownership | Specification | — | Plan §2, §6, §10 | Done |
+| T02 | Align backend dependencies and externalized configuration | Backend | T01 | FR-08, AC-12 | Done |
+| T03 | Establish local PostgreSQL/pgvector and migrations | Backend / Platform | T01, T02 | FR-03, FR-06, AC-05, AC-09 | Done |
+| T04 | Implement authentication, authorization, and safe API foundations | Backend | T02, T03 | FR-01, AC-01 | Done |
+| T05 | Define and verify API contracts | Specification / Backend / Frontend | T01, T04 | FR-02–FR-07, AC-02–AC-12 | Done |
+| T06 | Implement supported document extraction | Backend | T02 | FR-03, AC-05 | Done |
+| T07 | Implement stable chunking and source metadata | Backend | T03, T06 | FR-03, AC-05 | Done |
+| T08 | Implement embedding and pgvector persistence | Backend | T02, T03, T07 | FR-03, FR-06, AC-05, AC-09 | Done |
+| T09 | Implement upload API, validation, and duplicate detection | Backend | T03–T05 | FR-02, AC-02–AC-04 | Done |
+| T10 | Implement durable ingestion processing and recovery | Backend | T06–T09 | FR-03, FR-04, AC-05, AC-06 | Done |
+| T11 | Implement document status, retry, re-index, deletion, and purge APIs | Backend | T04, T05, T10 | FR-04, FR-05, AC-06–AC-07 | Done |
+| T12 | Build frontend foundation and typed API integration | Frontend | T05 | FR-01–FR-07, AC-14 | Done |
+| T13 | Build upload and document-management UI | Frontend | T11, T12 | FR-02, FR-04, FR-05, AC-02–AC-07, AC-14 | Done |
+| T14 | Implement authorization-scoped semantic retrieval | Backend | T03–T05, T08, T10 | FR-06, AC-08–AC-09 | Done |
+| T15 | Implement evidence policy and grounded answer orchestration | Backend | T02, T14 | FR-07, AC-10–AC-11 | Done |
+| T16 | Implement chat API and validated citations | Backend | T04, T05, T14, T15 | FR-06–FR-07, AC-08–AC-12 | Done |
+| T17 | Build assistant, answer, and citation UI | Frontend | T12, T16 | FR-06–FR-07, AC-08–AC-11, AC-14 | Done |
+| T18 | Add cross-cutting security, evaluation, and end-to-end coverage | Backend / Frontend / QA | T09–T17 | AC-01–AC-14 | Blocked |
+| T19 | Document and verify local setup and release readiness | Specification / Backend / Frontend | T02–T18 | FR-08, AC-12–AC-14 | Blocked |
+| T20 | Bootstrap collections, users and grants; OIDC user provisioning | Backend | T04 | FR-01, FR-02, AC-01 | Done |
 
 ## Task Details
 
@@ -56,7 +57,7 @@
   - Identify unresolved API, identity-provider, and model-name choices that block implementation. Record proposed choices as proposals and obtain human approval where required; do not change approved decisions without authorization.
 - **Completion criteria:** Blocking technical choices and repository ownership are recorded with status and rationale; conflicts are resolved or explicitly marked as blockers.
 - **Verification:** Review the decision/architecture record with the relevant repository owners; no implementation assumptions remain hidden.
-- **Status:** Not started
+- **Status:** Done — baseline recorded in [plan.md](./plan.md) §10a. Proposed (not yet approved) items: PostgreSQL 17 image, per-provider vector tables, Ollama and OpenAI model names. `product-decisions.md` was not changed; approval is required to promote them.
 
 ### T02 — Align backend dependencies and externalized configuration
 
@@ -70,7 +71,7 @@
   - Configure local Ollama/local authentication and deployed OpenAI/OIDC profiles without committing secrets.
 - **Completion criteria:** The backend resolves/builds using the approved dependency set; configuration is externalized, validated, and has safe placeholder examples only.
 - **Tests:** Dependency/build check; configuration binding and validation tests, including clear failure for missing required deployed settings and local-profile startup configuration.
-- **Status:** Not started
+- **Status:** Done — backend `build.gradle` trimmed to Ollama, OpenAI, pgvector, Flyway, PostgreSQL, validation, actuator (Anthropic and Pinecone removed); validated `EkaProperties`, `local` and `deployed` profiles, `.env.example`. `EkaPropertiesTest` passes and `./gradlew test` succeeds.
 
 ### T03 — Establish local PostgreSQL/pgvector and migrations
 
@@ -84,7 +85,7 @@
   - Ensure application chunk/document IDs link vector entries to trusted application metadata and access scope.
 - **Completion criteria:** A clean local database starts, reports ready, and migrations create the expected schema; restarting does not duplicate or corrupt schema state.
 - **Tests:** Migration tests against PostgreSQL; integration test for pgvector extension availability, vector insert/search, and stable metadata linkage. No production credentials in tracked files.
-- **Status:** Not started
+- **Status:** Done — backend `compose.yaml` (pgvector pg17, healthcheck), Flyway V1–V3 (extensions, core schema, per-provider vector tables). `MigrationIntegrationTest` (Testcontainers) passes; manual run confirmed health UP, migrations applied once and `Schema is up to date` on restart. Limitation: the local app user owns the database for simplicity; a separate least-privilege runtime role is not yet created.
 
 ### T04 — Implement authentication, authorization, and safe API foundations
 
@@ -98,7 +99,7 @@
   - Add safe, consistent error responses and request correlation IDs without disclosing protected resource content.
 - **Completion criteria:** Protected endpoints require authentication; permissions are resolved and checked server-side; local auth cannot be enabled accidentally in deployed configuration.
 - **Tests:** Unauthenticated requests return 401; unauthorized operations are denied without content leakage; local profile isolation and correlation/error behavior are covered.
-- **Status:** Not started
+- **Status:** Done — Spring Security: HTTP Basic restricted to the `local` profile, OIDC resource server otherwise; `ProfileGuard` blocks `local`+`deployed` together. Roles/grants in Flyway V4 (`app_users`, `collection_grants`) resolved by `AccessService` (read, manage, readable collections, citation document check; denials return 404). Error envelope, `X-Correlation-Id` filter, `GET /api/v1/me`. 16 tests cover 401, denial without leakage, local isolation and correlation. Limitation: OIDC subject-to-user provisioning and a Keycloak realm are not yet set up, so the deployed path is verified only for rejecting unauthenticated requests; no real token flow was tested.
 
 ### T05 — Define and verify API contracts
 
@@ -112,7 +113,7 @@
   - Document the contract in the canonical location and align backend and frontend types.
 - **Completion criteria:** Each required endpoint has a documented contract and matching client/server types; open decisions are explicit and approved as needed.
 - **Tests:** Contract/API tests cover valid requests, validation failures, status/error mapping, and authorization outcomes.
-- **Status:** Not started
+- **Status:** Done — contract in [api-contract.md](./api-contract.md); backend DTOs in `org.enterpriseknowledgeassitance.api` and frontend `src/api/types.ts` and `client.ts` aligned. `ApiContractTest` (validation, paging bounds, 400 mapping, auth) and `client.test.ts` pass, plus frontend typecheck, lint and build. Limitation: upload/list/detail/reindex/delete/chat endpoints are not implemented yet (T09, T11, T16), so the contract is not yet verified end to end. Values for paging (20/100), question length (2000) and metadata limits are proposed and awaiting approval.
 
 ### T06 — Implement supported document extraction
 
@@ -125,7 +126,7 @@
   - Keep temporary upload content out of permanent original-file storage and clean it after processing on both success and failure.
 - **Completion criteria:** Each supported format yields non-empty searchable text and available metadata, or a safe recorded processing failure.
 - **Tests:** Format corpus integration tests; corrupt/empty/unsupported input tests; temporary-file cleanup tests.
-- **Status:** Not started
+- **Status:** Done — PDF (PDFBox, per-page metadata), DOCX (POI, heading sections), TXT and Markdown (heading sections, offsets) in `ExtractionService`. Rejects unsupported, empty, corrupt, mislabelled, encrypted and over-limit content with safe reason codes; temp files are deleted on success and failure; limits via `eka.extraction.*`. 10 tests pass using generated fixtures. Limitations: no OCR (scanned PDFs are rejected as empty), DOCX tables/headers are not extracted, and fixtures are synthetic rather than real-world documents.
 
 ### T07 — Implement stable chunking and source metadata
 
@@ -138,7 +139,7 @@
   - Avoid empty chunks and ensure the configured settings are externally changeable.
 - **Completion criteria:** Chunks are non-empty, repeatable for identical input/configuration, and traceable to source document metadata.
 - **Tests:** Unit tests for boundaries, overlap, short/empty text, source metadata, and stable identifiers.
-- **Status:** Not started
+- **Status:** Done — `Chunker` (word-token windows, configurable size/overlap validated, deterministic chunk ids, page/section/start offset metadata). `ChunkerTest` (8) passes. Limitation: a token is a whitespace-delimited word, an approximation of model tokens.
 
 ### T08 — Implement embedding and pgvector persistence
 
@@ -152,7 +153,7 @@
   - Bound provider batch sizes and surface failures to the ingestion job.
 - **Completion criteria:** Successful chunks can be written and searched in pgvector with source metadata; provider/model configuration is externalized.
 - **Tests:** Integration tests for vector persistence/search, metadata filters, dimension/profile isolation, and provider failure handling.
-- **Status:** Not started
+- **Status:** Done — `ChunkIndexer` embeds in batches with finite/dimension checks, replaces a document's chunks transactionally, stores vectors in `vector_store_ollama|openai` (FK cascade to `document_chunks`), and searches scoped to collections with version/type/tag filters, threshold, soft-delete exclusion and model match. Uses own JDBC rather than the Spring AI `VectorStore` bean. Integration test with Testcontainers and a fake embedding model passes. Limitation: provider timeouts/retries are not enforced yet (T10).
 
 ### T09 — Implement upload API, validation, and duplicate detection
 
@@ -166,7 +167,7 @@
   - Persist document and ingestion-job records and return `202 Accepted` with identifier and status reference only after valid acceptance.
 - **Completion criteria:** Valid uploads create a document/job; rejected files and duplicates do not create searchable or duplicate records.
 - **Tests:** Supported file acceptance; exactly-at-limit and over-limit cases; spoofed extension/content; authorization; duplicate and soft-deleted duplicate cases; safe errors.
-- **Status:** Not started
+- **Status:** Done — `POST /api/v1/documents` (multipart, 202 QUEUED + status URL), manage-permission check (404 otherwise), size/type/content-signature/empty/corrupt validation, SHA-256 duplicate detection (409, soft-deleted allowed), metadata validation, file-name sanitising. Design deviation: extraction runs synchronously at upload and text is staged in `document_extraction_segments` (migration V5), so no original file is stored (DEC-005); T10 only chunks/embeds/indexes from staged segments. `DocumentUploadIntegrationTest` (PDF/DOCX/TXT/MD, exact 10 MB, over-limit, spoofed, empty, corrupt, auth, duplicates, validation) passes; full suite 61 tests green. Limitations: OCR deferred (scanned PDFs rejected as empty); DOCX tables not extracted; 413 from container-level multipart limits untested in a real servlet container.
 
 ### T10 — Implement durable ingestion processing and recovery
 
@@ -179,7 +180,7 @@
   - Make processing idempotent and mark documents searchable only after required writes complete.
 - **Completion criteria:** Jobs survive process restart/recovery; success and terminal failure are visible; retries do not create duplicate active chunks.
 - **Tests:** State-transition tests, restart/recovery integration, retry/idempotency tests, provider outage/timeout tests.
-- **Status:** Not started
+- **Status:** Done — `IngestionService` (claim with `FOR UPDATE SKIP LOCKED`, chunk/embed/index from staged segments, state transitions persisted on job and document) and `IngestionWorker` (scheduled poller, bounded by `eka.ingestion.concurrency`). Transient provider failures retry with backoff (`available_at`, migration V6) up to `eka.ingestion.max-retries`; dimension mismatch and empty content fail immediately; failure reasons are stable codes only. Provider calls are bounded by `eka.ingestion.provider-timeout` (`EMBEDDING_TIMEOUT`). RUNNING jobs not updated for `eka.ingestion.stale-after` (default 15m) are re-queued or failed (restart recovery). Documents become INDEXED only after the atomic chunk+vector replacement, so retries leave no duplicate chunks. `IngestionServiceIntegrationTest` (9) and `IngestionWorkerIntegrationTest` pass. Limitation: recovery relies on the stale threshold, so after a crash a job resumes only after that interval; no heartbeat for jobs longer than it.
 
 ### T11 — Implement document status, retry, re-index, deletion, and purge APIs
 
@@ -192,7 +193,7 @@
   - Implement immediate soft-delete exclusion from listing, retrieval, and citations; persist the seven-day purge deadline and purge/audit outcomes.
 - **Completion criteria:** Only permitted metadata is returned; retry/re-index are safe; deleted content is immediately inaccessible and permanently purged after retention.
 - **Tests:** Permission and direct-ID access tests; state/status API tests; retry/re-index; deletion exclusion; purge timing and retry/audit tests.
-- **Status:** Not started
+- **Status:** Done — `GET /api/v1/documents` (permitted only, filters, bounded paging), `GET /{id}`, `POST /{id}/reindex` (manage permission, idempotent while queued/processing, FAILED documents retried this way, old chunks stay searchable until the atomic replacement), `DELETE /{id}` (manage permission, immediate exclusion from list/detail/search, pending jobs cancelled, `purge_after` persisted = deletion + `eka.retention.purge-after-days`). `PurgeService` (scheduled, batched) deletes the row and cascades to jobs, staged text, chunks and vectors; every reindex/delete/purge is recorded in content-free `document_audit`; failed purges are audited and retried next run. `DocumentManagementIntegrationTest` (12) covers permissions, direct-ID 404s, filters/paging, reindex idempotency, delete exclusion, purge timing and failed-purge retry. Full backend suite: 82 tests green. Limitations: a second DELETE returns 404; admin-triggered retry/purge endpoints and audit read API are not provided.
 
 ### T12 — Build frontend foundation and typed API integration
 
@@ -206,7 +207,7 @@
   - Establish reusable loading, empty, validation, authorization, provider, and service-error patterns.
 - **Completion criteria:** Client/server types agree and API errors are represented as distinct UI states without exposing sensitive payloads.
 - **Tests:** Client unit tests for request/response and error mapping; auth/API configuration tests.
-- **Status:** Not started
+- **Status:** Done — `parseConfig` validates `VITE_API_BASE_URL` (http/https, no credentials, trailing slash stripped); `toUiError` maps API errors to distinct safe UI kinds with fixed text and the correlation id; client wraps network failures and signals 401 via `onUnauthorized`; `AuthProvider`/`useAuth` keep credentials in memory only, take identity from `/me`, and end the session on 401 (Basic for the local profile, generic Authorization-header source for OIDC); `useApiQuery`, `LoadingState`, `EmptyState`, and `ErrorState` provide reusable patterns. The frontend now has 44 passing Vitest tests, typecheck and production build pass. Limitation: a real Keycloak/OIDC login flow remains unimplemented; lint reports two React heuristic warnings in `AuthProvider.test.tsx` and `AuthProvider.tsx`.
 
 ### T13 — Build upload and document-management UI
 
@@ -219,7 +220,7 @@
   - Expose retry, re-index, and deletion controls only where allowed by API permissions; refresh status without treating timeout as success.
 - **Completion criteria:** Knowledge Manager can complete supported upload and lifecycle flows; users cannot mistake pending/failed work for indexed success.
 - **Tests:** Component/E2E tests for upload states, validation, duplicate response, status refresh, retry, and delete behavior.
-- **Status:** Not started
+- **Status:** Done — Implemented readable-collection listing, upload, lifecycle/status refresh, retry/re-index and delete controls, gated by manageable collection grants; safe UI errors and component coverage are in place. Frontend typecheck, 40 Vitest tests, production build, lint, and the browser workflow test passed. Lint retains two pre-existing React heuristic warnings in `AuthProvider.test.tsx` and `AuthProvider.tsx`.
 
 ### T14 — Implement authorization-scoped semantic retrieval
 
@@ -232,7 +233,7 @@
   - Exclude non-indexed, failed, deleting, and deleted content; return no more than configured top-K authorized passages and trusted metadata.
 - **Completion criteria:** Retrieval cannot broaden server authorization and filters are applied before passage text is exposed to answer construction.
 - **Tests:** Integration/adversarial tests for direct-ID and tampered filters, collection isolation, lifecycle exclusions, fewer-than-top-K results, and empty query short-circuit.
-- **Status:** Not started
+- **Status:** Done — Vector retrieval derives scope from server-side grants, intersects caller filters with authorized collections, applies document lifecycle and metadata filters before returning passages, and skips embedding when no eligible indexed chunks exist. Backend tests passed, including retrieval authorization/lifecycle coverage.
 
 ### T15 — Implement evidence policy and grounded answer orchestration
 
@@ -246,7 +247,7 @@
   - Build citation references from trusted retrieval metadata, not unvalidated model-generated IDs.
 - **Completion criteria:** Insufficient evidence does not produce an unsupported model answer; sufficient-evidence output is grounded in retrieved context.
 - **Tests:** Evidence threshold/budget unit tests, no-model-call test for insufficient evidence, prompt-injection and citation mapping tests.
-- **Status:** Not started
+- **Status:** Done — Chat orchestration enforces evidence threshold and bounded context, avoids model calls for insufficient evidence, treats retrieved passages as untrusted prompt data, and constructs citations from trusted retrieval metadata. Backend tests passed for evidence policy, prompt containment, citation mapping, and provider timeout behavior.
 
 ### T16 — Implement chat API and validated citations
 
@@ -259,7 +260,7 @@
   - Ensure citation details resolve only through authorized application metadata and do not persist conversations.
 - **Completion criteria:** API returns only valid authorized citations or a clear insufficient-evidence result; no secrets, raw prompts, or provider payloads are exposed.
 - **Tests:** API integration for answerable/unanswerable queries, unknown/unauthorized citation rejection, provider timeout, safe error envelope, and no conversation persistence.
-- **Status:** Not started
+- **Status:** Done — Added the validated chat endpoint, safe provider errors/timeouts, correlation IDs, trusted authorized citations, and retrieval/end-to-end timing fields; no conversation persistence was added. Backend contract and integration tests passed.
 
 ### T17 — Build assistant, answer, and citation UI
 
@@ -273,7 +274,7 @@
   - Keep controls keyboard-operable and do not imply chat history persists.
 - **Completion criteria:** User can ask, review, and verify supported answers and understand insufficient evidence and failure states.
 - **Tests:** Component/E2E tests for query flow, filters, answer states, safe citation rendering, unavailable citations, and accessibility.
-- **Status:** Not started
+- **Status:** Done — Added question/filter UI, pending/error and insufficient-evidence states, inert citation rendering, and citation access rechecks. Frontend typecheck, 44 Vitest tests, production build, lint, and the Playwright browser workflow passed. Lint retains two pre-existing React heuristic warnings in `AuthProvider.test.tsx` and `AuthProvider.tsx`.
 
 ### T18 — Add cross-cutting security, evaluation, and end-to-end coverage
 
@@ -287,7 +288,7 @@
   - Treat proposed thresholds as evaluation targets only until formally approved.
 - **Completion criteria:** Each applicable acceptance criterion maps to automated or explicit verification evidence; evaluation output records dataset and configuration/model versions.
 - **Tests:** Full relevant backend/frontend test suites, adversarial authorization/prompt tests, and repeatable evaluation run.
-- **Status:** Not started
+- **Status:** Blocked — Automated backend and frontend suites, adversarial authorization/prompt tests, and the Playwright workflow pass; a reproducible evaluation runner records dataset/configuration/model versions, Recall@5, MRR, citation completeness, latency, and optional human-review scores. A representative, access-authorized labelled evaluation dataset and human review data were not supplied, so quality evaluation and its acceptance evidence cannot be produced without inventing results. Backend `./gradlew test`, frontend typecheck/tests/build/lint/E2E, evaluation script syntax, and all three repositories' `git diff --check` passed; lint has the two warnings noted under T13/T17.
 
 ### T19 — Document and verify local setup and release readiness
 
@@ -300,4 +301,17 @@
   - Record remaining limitations, unresolved decisions, evaluation results, and verified task status in canonical project records.
 - **Completion criteria:** A developer can reproduce documented local setup; release readiness evidence and unresolved blockers are accurately recorded.
 - **Tests:** Follow setup instructions on a clean environment; run required checks; inspect tracked examples and logs for secrets or sensitive content.
-- **Status:** Not started
+- **Status:** Blocked — Backend and frontend setup, model, seed, health-check, test, and recovery instructions were updated. A fresh isolated PostgreSQL 17 verification applied all migrations; the SQL seed was verified idempotent; backend health and `/api/v1/me` were verified. Release-readiness completion depends on T18's unavailable labelled-dataset evaluation and review evidence.
+
+### T20 — Bootstrap collections, users and grants; OIDC user provisioning
+
+- **Repository:** Backend
+- **Depends on:** T04
+- **Target areas:** Security/identity services, migration or seed script, setup documentation, tests
+- **Work:**
+  - Provide a documented way to create collections and grant `READ`/`MANAGE` without an admin UI (SQL seed script or admin-only API; choose one and record it).
+  - On first OIDC login, create the `app_users` row as `MEMBER` with no grants; admins grant access afterwards.
+  - Provide a local-profile seed for the development user.
+- **Completion criteria:** A new deployment can create a collection, grant a user access, and upload without manual undocumented steps; new OIDC users get no access by default.
+- **Tests:** First-login provisioning creates `MEMBER` with no grants; seeded grants are honored; unprovisioned users see nothing.
+- **Status:** Done — Chose and documented the local SQL seed approach. The seed creates the local user/collection/grant and is idempotent; first OIDC login provisions a `MEMBER` with no grants. Provisioning, grant behavior, and no-access behavior are covered by backend tests; full backend tests passed.

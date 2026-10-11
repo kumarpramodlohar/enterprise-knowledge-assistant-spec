@@ -157,6 +157,31 @@ Do not treat the proposed answer-quality, citation, or latency values in the sou
 | Original-file retention | Original files are not stored. Verify that derived extracted text/chunks and temporary files comply with DEC-005 and cleanup behavior. |
 | Evaluation target methodology | Targets are proposed; establish baseline dataset and hardware before adopting quality or latency thresholds. |
 
+## 10a. Technical Baseline Decisions (T01)
+
+Recorded 2026-10-11. All rows below are approved by the project owner (models, PostgreSQL version and API limits approved 2026-10-11).
+
+| Topic | Status | Baseline |
+|---|---|---|
+| Spring Boot / Spring AI | Decided | Keep Spring Boot 4.1.1 and Spring AI 2.0.1 with Java 21 (the README's "3.x" is outdated). |
+| Compose ownership | Decided | Backend repository owns `compose.yaml`; it runs PostgreSQL/pgvector only. |
+| Migrations | Decided | Flyway, versioned SQL in `src/main/resources/db/migration`. |
+| PostgreSQL / pgvector | Decided | `pgvector/pgvector:pg17`; default host port 5433 to avoid clashing with a local PostgreSQL. |
+| Vector tables | Decided | One table per provider profile: `vector_store_ollama` (768) and `vector_store_openai` (1536); entry id equals `document_chunks.id`. |
+| Local models | Decided | Ollama `llama3.1:8b` chat, `nomic-embed-text` embeddings. |
+| Deployed models | Decided | OpenAI `gpt-4o-mini` chat, `text-embedding-3-small` embeddings. |
+| Identity provider | Decided | Keycloak (OIDC) for deployed mode; local-profile authentication for development (T04). |
+| Disclosure policy | Decided | Inaccessible documents return 404. |
+| Admin scope | Decided | Admin user/role/settings UIs are deferred; server-side authorization is still required. |
+| SRS AT-09 | Decided | Deferred for MVP (conflicts with DEC-008). |
+| Rate limits / pagination | Decided | Deferred to API design (T05). |
+| Quality and latency targets | Decided | 80% / 95% and p95 1.5s remain provisional. |
+| API limits | Decided | List page size default 20, max 100; chat question max 2000 characters. |
+| Keycloak user provisioning | Decided | First login creates the user row as `MEMBER` with no grants; an admin grants access in the database. |
+| Collection/user bootstrap | Decided | A bootstrap task (T20) creates collections and grants without an admin UI. |
+| OCR | Decided | Deferred; scanned PDFs are rejected with a clear reason code. |
+| Hosting | Decided | Environment-specific; out of MVP scope. |
+
 ## 11. Plan Exit Criteria
 
 This plan is ready to guide task creation when:
