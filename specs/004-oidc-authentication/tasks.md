@@ -11,5 +11,5 @@
 | K05 | Dev proxy and environment example | Frontend | `vite.config.ts`, `.env.example` | Done |
 | K06 | Automated tests | Frontend | `src/auth/oidc.test.tsx`, `src/app/config.test.ts` | Done (56 unit tests, e2e and build pass) |
 | K07 | Manual end-to-end login against Keycloak | Frontend / Backend | — | Not started (needs a Keycloak test user and a backend run with OIDC enabled) |
-| K08 | Backend profile for OIDC with local Ollama | Backend | profile properties | Blocked on OI-1 |
+| K08 | Backend `oidc` profile for Keycloak with local Ollama | Backend | `SecurityConfig.java`, `application-oidc.properties`, `LocalOidcProfileTest.java` | Done (17 security tests pass) |
 | K09 | Approve token lifetime and lockout values | Specification | — | Blocked on OI-2 |

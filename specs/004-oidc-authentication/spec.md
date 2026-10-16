@@ -17,6 +17,7 @@ All roles. Identity comes from Keycloak; roles and collection grants stay in Pos
 - FR-5: Access tokens are renewed silently with the refresh token. If renewal fails, or any call returns 401, the session ends, the user returns to `/login`, and a notice says the session expired.
 - FR-6: Sign-out clears in-memory tokens and ends the Keycloak session, returning to `/login`.
 - FR-7: SSO is enabled only when `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` are both set; setting only one is a configuration error.
+- FR-9: Profiles: `local` alone uses HTTP Basic; `local,oidc` uses Keycloak tokens only and disables Basic; `deployed` uses Keycloak and OpenAI. `local` and `deployed` together remain forbidden.
 - FR-8: The local username/password form remains for development; production builds with OIDC configured hide it.
 
 ## Non-functional and security requirements
@@ -45,6 +46,6 @@ All roles. Identity comes from Keycloak; roles and collection grants stay in Pos
 Admin UI for roles and grants, mapping Keycloak roles to EKA roles, social login, multi-realm or multi-tenant support, rate limiting in EKA.
 
 ## Open items
-- OI-1: Running Keycloak together with Ollama needs backend profile composition; today only the `deployed` profile enables OIDC and it also selects OpenAI (requires `OPENAI_API_KEY`).
+- OI-1: Resolved. The backend `oidc` profile adds Keycloak token validation to any profile. `SPRING_PROFILES_ACTIVE=local,oidc` uses Keycloak with Ollama and needs no OpenAI key. Switching to OpenAI later means `deployed` (OIDC plus OpenAI) with `OPENAI_API_KEY`. Re-index all documents after switching providers (DEC-002).
 - OI-2: Approve the suggested token lifetime and lockout values.
 - OI-3: Whether the `aud` claim should be validated by the backend.
