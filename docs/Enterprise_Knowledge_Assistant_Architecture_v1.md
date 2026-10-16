@@ -288,7 +288,7 @@ The inspected Gradle build currently includes Spring AI starters for Anthropic, 
 | Vector store | PostgreSQL with pgvector and linked application metadata. | Approved. |
 | Keyword/hybrid search | Deferred until after the vector baseline (DEC-008). | Deferred. |
 | Ingestion execution | Bounded managed worker (concurrency 2) plus durable PostgreSQL job state; no Kafka in the MVP (DEC-008). | Approved. |
-| Identity | Local dev mode plus OIDC for deployed environments (DEC-001). OIDC provider product still to be chosen. | Approved. |
+| Identity | Local dev mode plus OIDC for deployed environments (DEC-001). OIDC provider: Keycloak. | Approved. |
 | Chat/embedding providers | Ollama locally, OpenAI when deployed (DEC-002). Exact model names set in configuration. | Approved. |
 | Original document storage | Not stored (DEC-005). | Approved. |
 | Conversation history | Deferred; questions and answers are not stored (DEC-008). | Approved. |

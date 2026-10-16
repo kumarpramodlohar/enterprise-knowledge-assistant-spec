@@ -70,7 +70,7 @@
 
 **Remaining work**
 
-- Pick the OIDC provider product and the exact Ollama/OpenAI model names (set in configuration during EKA-02; no code change needed).
+- Pick the exact Ollama/OpenAI model names (OIDC provider is decided: Keycloak, see DEC-001) (set in configuration during EKA-02; no code change needed).
 - Set the evidence threshold per provider profile after the first evaluation run (EKA-19), because similarity scores differ between models.
 
 **Acceptance / test requirements**

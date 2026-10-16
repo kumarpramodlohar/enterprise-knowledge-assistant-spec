@@ -26,7 +26,8 @@ If a decision changes, update this file first, then the affected spec or task.
 **Notes**
 - Local dev mode must be disabled by default outside the `local` profile.
 - Roles and collection permissions are stored in PostgreSQL and mapped from the user's identity subject.
-- OIDC provider product is not chosen yet; the backend uses standard OIDC so any provider works.
+- **OIDC provider: Keycloak** (owner instruction, 2026-10-16). The backend still uses standard OIDC, so the provider stays replaceable.
+- **Frontend flow:** Authorization Code with PKCE for a public client (no client secret), using `oidc-client-ts`; tokens are kept in memory only. Details: [specs/004-oidc-authentication](../../specs/004-oidc-authentication/spec.md).
 
 **Affects:** EKA-04, EKA-06, EKA-20
 

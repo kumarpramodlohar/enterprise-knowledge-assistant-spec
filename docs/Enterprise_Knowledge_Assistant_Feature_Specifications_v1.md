@@ -31,7 +31,7 @@ Each feature distinguishes the React UI from the Spring Boot/Spring AI backend. 
 - **Safe error:** A user-readable message/code that does not disclose credentials, provider internals, stack traces, or unauthorized document content.
 - **MVP response mode:** Synchronous query/answer response. Document upload/ingestion may be asynchronous.
 - **Approved decisions:** Limits, providers, retention and tuning values come from [`implementation/product-decisions.md`](implementation/product-decisions.md) (DEC-001 to DEC-008): 10 MB upload limit, Ollama locally and OpenAI when deployed, no original-file storage, soft delete with a 7-day purge, chunk 800/100 tokens, top-K 5, context budget 4000 tokens, evidence threshold 0.70 (tuned per provider), worker concurrency 2.
-- **Still open:** OIDC provider product, exact model names, and request quotas.
+- **Still open:** exact model names and request quotas. OIDC provider is Keycloak (DEC-001).
 
 ## 2. Feature: Document Upload
 

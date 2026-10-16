@@ -187,7 +187,7 @@ Report results alongside dataset version and model/retrieval configuration. The 
 - Select an LLM and embedding provider before implementation; keep provider settings externalized.
 - PostgreSQL full-text search is the proposed first keyword-search option; Kafka is optional, and a simpler background mechanism is acceptable for the first thin slice.
 - Decided (see [`implementation/product-decisions.md`](implementation/product-decisions.md)): local dev auth plus OIDC; Ollama locally and OpenAI when deployed; 10 MB upload limit; duplicates rejected; original files not stored; soft delete with a 7-day purge; hybrid retrieval, reranking, feedback, conversation history and Kafka deferred.
-- Still open: OIDC provider product and exact model names.
+- Still open: exact model names. OIDC provider: Keycloak (DEC-001 update, 2026-10-16).
 - Benchmark performance on a named environment before committing to latency targets.
 
 ## 11. Release Readiness

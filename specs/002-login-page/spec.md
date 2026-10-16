@@ -20,7 +20,7 @@ All roles. Local sign-in is for development environments only.
 - FR-4: A failed sign-in shows a fixed, user-safe message and the correlation ID if present. Server messages are never rendered.
 - FR-5: Successful sign-in navigates to `/assistant`; an authenticated user visiting `/login` is redirected there.
 - FR-6: Unauthenticated or expired sessions on protected routes redirect to `/login`.
-- FR-7: The "Continue with company SSO" button is shown disabled until an OIDC flow is specified (open item OI-1).
+- FR-7: The "Continue with company SSO" button starts the OIDC sign-in defined in [specs/004-oidc-authentication](../004-oidc-authentication/spec.md); it is disabled with an explanatory note when OIDC is not configured.
 
 ## Non-functional requirements
 - Accessible: labelled fields, `aria-invalid`/`aria-describedby` on errors, `role="alert"` for failures, visible focus rings, no axe violations.
@@ -36,7 +36,7 @@ All roles. Local sign-in is for development environments only.
 Authorization remains server-side; the UI grants nothing. No secrets are stored in web storage or logged.
 
 ## Out of scope
-OIDC redirect implementation, password reset, registration, remember-me.
+Password reset, registration, remember-me.
 
 ## Open items
-- OI-1: OIDC flow details (provider, redirect/PKCE handling) need an approved decision before the SSO button is enabled.
+- OI-1: Resolved by DEC-001 update (Keycloak) and spec 004.
