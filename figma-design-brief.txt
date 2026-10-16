@@ -1,0 +1,24 @@
+App name: Enterprise Knowledge Assistant (EKA)
+
+Primary users: Knowledge Seeker (asks questions), Knowledge Manager (uploads/manages documents), Administrator (users, roles, audit), Operator (health, redacted diagnostics only).
+
+Top 3 tasks:
+1. Ask a question and get a cited, grounded answer.
+2. Upload documents and track ingestion status.
+3. List, re-index and delete documents.
+
+Must-have features: Login (local dev + OIDC); chat with citations (document, page/section); clear "insufficient evidence" state; collection filters; document list with statuses (processing, ready, failed); upload validation (PDF/DOCX/TXT/MD, 10 MB, duplicate 409); role-based UI and 403 states; loading/empty/error states; accessibility. No history or feedback in MVP.
+
+Knowledge sources: User-uploaded technical documents (PDF, DOCX, TXT, Markdown) in access-controlled collections. Originals not stored; only extracted text and metadata.
+
+Screens/platform: Responsive web app (React, TypeScript, Tailwind). Screens: Login, Ask/Chat, Documents, Upload, Document detail, Admin, Access denied, Not found, Error.
+
+Brand/style (proposal): Clean enterprise look like Notion/Linear/Perplexity; neutral grays, one indigo accent, amber for insufficient evidence; Inter font; light mode first; high contrast, visible focus rings.
+
+Sample Q&A:
+Q: What is the maximum upload file size?
+A: Each file can be up to 10 MB. Supported: PDF, DOCX, TXT, Markdown. [1]
+[1] Upload Policy.pdf, section 2.1, p.4
+Insufficient: "I couldn't find enough information in documents you can access. Try rephrasing or another collection."
+
+Permissions/security: Server-side authorization before retrieval, citations and AI calls; users see only permitted collections/documents; citations never leak restricted content; render content as sanitized text, never raw HTML; no tokens in logs/storage; deleted docs vanish immediately; actions shown by role.
