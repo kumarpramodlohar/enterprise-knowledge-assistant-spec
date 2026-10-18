@@ -14,6 +14,7 @@ If a decision changes, update this file first, then the affected spec or task.
 | DEC-006 | Deletion | Soft delete, purge after 7 days | Approved |
 | DEC-007 | RAG tuning values | Starting values below | Approved |
 | DEC-008 | MVP scope | Optional features deferred | Approved |
+| DEC-009 | Document extraction libraries | Apache PDFBox (PDF), Apache POI (DOCX), plain read (TXT/MD) | Proposed (pending approval) |
 
 ---
 
@@ -118,3 +119,22 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 - These can be added after the MVP baseline evaluation.
 
 **Affects:** EKA-17, EKA-19
+
+## DEC-009: Document extraction libraries
+
+**Status:** Proposed. Not approved; requires explicit human approval.
+
+**Proposal:** Keep the existing extraction libraries: Apache PDFBox for PDF, Apache POI (`poi-ooxml`) for DOCX, and plain text reading for TXT and MD. Do not add LangChain Community (Python/JavaScript only, not usable in the Java backend) or LangChain4j.
+
+**Rationale**
+- Already implemented with the page/character limits and DOCX zip-bomb guards.
+- Gives the page and section data needed for citations.
+- Smaller attack surface than a multi-format parser such as Apache Tika, for untrusted uploads.
+- Avoids a second AI framework alongside Spring AI.
+- Approved MVP formats (PDF, DOCX, TXT, MD) are fully covered.
+
+**Reconsider when:** formats such as PPTX, XLSX, HTML or scanned PDFs (OCR) are added. Then evaluate Apache Tika or a dedicated parser for those formats only; a spec update is required first.
+
+**Notes:** Spring AI `Document` may be used as the in-memory type for extracted text and metadata.
+
+**Affects:** EKA-02, EKA-10
