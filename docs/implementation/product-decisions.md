@@ -4,27 +4,30 @@ Decisions that unblock the [Implementation Backlog](Implementation_Backlog_v1.md
 
 If a decision changes, update this file first, then the affected spec or task.
 
-| ID | Topic | Decision | Status |
-|---|---|---|---|
-| DEC-001 | Authentication | Local dev mode + OIDC | Approved |
-| DEC-002 | AI providers | Ollama (local), OpenAI (deployed) | Approved |
-| DEC-003 | Upload limits | 10 MB, extension + content check | Approved |
-| DEC-004 | Duplicate uploads | Reject with 409 | Approved |
-| DEC-005 | Original files | Not stored | Approved |
-| DEC-006 | Deletion | Soft delete, purge after 7 days | Approved |
-| DEC-007 | RAG tuning values | Starting values below | Approved |
-| DEC-008 | MVP scope | Optional features deferred | Approved |
-| DEC-009 | Document extraction libraries | Apache PDFBox (PDF), Apache POI (DOCX), plain read (TXT/MD) | Proposed (pending approval) |
+| ID      | Topic                                | Decision                                                    | Status                      |
+| ------- | ------------------------------------ | ----------------------------------------------------------- | --------------------------- |
+| DEC-001 | Authentication                       | Local dev mode + OIDC                                       | Approved                    |
+| DEC-002 | AI providers                         | Ollama/OpenAI independently selectable for chat and embeddings in local/dev; Ollama defaults locally, OpenAI when deployed | Approved |
+| DEC-003 | Upload limits                        | 10 MB, extension + content check                            | Approved                    |
+| DEC-004 | Duplicate uploads                    | Reject with 409                                             | Approved                    |
+| DEC-005 | Original files                       | Not stored                                                  | Approved                    |
+| DEC-006 | Deletion                             | Soft delete, purge after 7 days                             | Approved                    |
+| DEC-007 | RAG tuning values                    | Starting values below                                       | Approved                    |
+| DEC-008 | MVP scope                            | Optional features deferred                                  | Approved                    |
+| DEC-009 | Document extraction libraries        | Apache PDFBox (PDF), Apache POI (DOCX), plain read (TXT/MD) | Proposed (pending approval) |
+| DEC-010 | Corrective RAG (CRAG) and web search | Post-MVP; decide after baseline evaluation                  | Proposed (pending approval) |
 
 ---
 
 ## DEC-001: EKA-01 - Authentication
 
 **Decision:** Support two modes through Spring Security.
+
 - **Local dev mode:** simple local users for development and tests only.
 - **Deployed environments:** OIDC provider (Spring Security OAuth2 resource server validating tokens).
 
 **Notes**
+
 - Local dev mode must be disabled by default outside the `local` profile.
 - Roles and collection permissions are stored in PostgreSQL and mapped from the user's identity subject.
 - **OIDC provider: Keycloak** (owner instruction, 2026-10-16). The backend still uses standard OIDC, so the provider stays replaceable.
@@ -34,13 +37,12 @@ If a decision changes, update this file first, then the affected spec or task.
 
 ## DEC-002: EKA-01 - Chat and embedding providers
 
-**Decision:**
-- **Local dev:** Ollama for chat and embeddings.
-- **Deployed:** OpenAI for chat and embeddings.
-- Switching is done with Spring profiles and configuration, not code changes.
+**Decision:** Both Ollama and OpenAI are supported in local and development environments. Chat and embedding providers are independently selectable through backend configuration, so either provider can be used for each capability, including a mixed setup. Deployed environments default to OpenAI. Selection is made at backend startup; changing providers does not require source edits, but does require a restart.
 
 **Notes**
-- Ollama and OpenAI embedding models have different vector dimensions. Each environment has its own index; switching provider means re-indexing all documents.
+
+- Ollama and OpenAI embedding models may have different dimensions. The active embedding configuration uses its matching isolated vector table/index; changing embedding provider or model requires re-indexing all documents into that index before they are searchable there. Chat-provider changes do not require re-indexing.
+- A single running backend uses one configured chat provider and one configured embedding provider. Both integrations may be configured in the same environment, but this decision does not promise automatic failover or simultaneous fan-out to both providers for one request.
 - Similarity scores differ per model, so the evidence threshold (DEC-007) is set per profile and tuned during evaluation.
 - Remove unused starters (Anthropic, Pinecone) from `build.gradle` in EKA-02.
 - Specific model names are set in configuration during EKA-02.
@@ -50,6 +52,7 @@ If a decision changes, update this file first, then the affected spec or task.
 ## DEC-003: EKA-01 - Upload limits and validation
 
 **Decision:**
+
 - Maximum file size: **10 MB** per file.
 - Allowed types: PDF, DOCX, TXT, Markdown.
 - Validation: file extension **and** server-side content check. Client-supplied content type is never trusted alone.
@@ -61,6 +64,7 @@ If a decision changes, update this file first, then the affected spec or task.
 **Decision:** Reject a duplicate with **409 Conflict** when the same file checksum already exists in the same collection.
 
 **Notes**
+
 - Soft-deleted documents (DEC-006) do not count as duplicates, so a deleted file can be uploaded again.
 - The error message tells the user which document already exists, only if they can access it.
 
@@ -71,6 +75,7 @@ If a decision changes, update this file first, then the affected spec or task.
 **Decision:** Original files are **not stored**. Only extracted text, chunks, vectors and metadata are kept. Temporary upload files are deleted after processing, on success or failure.
 
 **Notes**
+
 - Re-indexing therefore needs the stored chunk text (or a new upload) because the original file is gone. For the MVP, re-index reuses stored extracted text.
 - Changing the extraction logic requires re-uploading the file.
 
@@ -79,12 +84,14 @@ If a decision changes, update this file first, then the affected spec or task.
 ## DEC-006: EKA-01 - Deletion
 
 **Decision:** **Soft delete.**
+
 1. Deletion marks the document as deleted. It is excluded from retrieval, listings and citations immediately.
 2. Records are kept for **7 days**.
 3. After 7 days, a purge job permanently removes chunks, vectors and derived records.
 4. Each deletion and purge is written to the audit log.
 
 **Notes**
+
 - Deleted content still exists in the database for up to 7 days but is not reachable through the API.
 - Purge failures are retried and logged.
 
@@ -94,20 +101,21 @@ If a decision changes, update this file first, then the affected spec or task.
 
 All values are configurable and will be tuned during evaluation (EKA-19).
 
-| Setting | Initial value |
-|---|---|
-| Chunk size | 800 tokens |
-| Chunk overlap | 100 tokens |
-| Top-K | 5 |
-| Context budget | 4000 tokens |
-| Minimum similarity (evidence threshold) | 0.70 |
-| Ingestion worker concurrency | 2 |
+| Setting                                 | Initial value |
+| --------------------------------------- | ------------- |
+| Chunk size                              | 800 tokens    |
+| Chunk overlap                           | 100 tokens    |
+| Top-K                                   | 5             |
+| Context budget                          | 4000 tokens   |
+| Minimum similarity (evidence threshold) | 0.70          |
+| Ingestion worker concurrency            | 2             |
 
 **Affects:** EKA-02, EKA-10, EKA-12, EKA-15, EKA-16
 
 ## DEC-008: EKA-01 - MVP scope of optional features
 
 **Decision:** The following are **deferred** (not in MVP):
+
 - Hybrid (keyword + vector) retrieval
 - Reranking
 - Answer feedback
@@ -115,8 +123,10 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 - Kafka or other message broker for ingestion (use the bounded executor with persisted jobs)
 
 **Notes**
+
 - Without conversation history, questions and answers are not stored.
 - These can be added after the MVP baseline evaluation.
+- CRAG-style corrective retrieval (evaluator, refinement, query rewrite, web search) is also not in the MVP; see DEC-010.
 
 **Affects:** EKA-17, EKA-19
 
@@ -127,6 +137,7 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 **Proposal:** Keep the existing extraction libraries: Apache PDFBox for PDF, Apache POI (`poi-ooxml`) for DOCX, and plain text reading for TXT and MD. Do not add LangChain Community (Python/JavaScript only, not usable in the Java backend) or LangChain4j.
 
 **Rationale**
+
 - Already implemented with the page/character limits and DOCX zip-bomb guards.
 - Gives the page and section data needed for citations.
 - Smaller attack surface than a multi-format parser such as Apache Tika, for untrusted uploads.
@@ -138,3 +149,22 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 **Notes:** Spring AI `Document` may be used as the in-memory type for extracted text and metadata.
 
 **Affects:** EKA-02, EKA-10
+
+## DEC-010: Corrective RAG (CRAG) and web search
+
+**Status:** Proposed. Not approved; requires explicit human approval after the MVP baseline evaluation. Decide per phase.
+
+**Baseline (MVP):** retrieve, apply the similarity evidence threshold (DEC-007), then generate or return insufficient evidence. No per-document evaluator, refinement, query rewrite, or web search.
+
+**Proposal (phased, each separately approvable):**
+
+- P1 retrieval evaluator with Correct / Ambiguous / Incorrect verdicts.
+- P2 knowledge refinement (strip, filter, recompose).
+- P3 query rewrite with internal re-retrieval in the same authorization scope.
+- P4 external web search.
+
+**Constraints:** P4 conflicts with the current out-of-scope rule on public web access and would send derived user queries to an external provider. It needs a scope change, redaction and data-sharing approval, and a distinct external citation type. P1–P3 stay internal.
+
+**Open decisions:** evaluator type, handling of Ambiguous, web search allowed or not, latency/cost budget, thresholds, user visibility. See [specs/005-corrective-rag](../../specs/005-corrective-rag/spec.md) §9.
+
+**Affects:** EKA-15, EKA-17, EKA-19 (future)

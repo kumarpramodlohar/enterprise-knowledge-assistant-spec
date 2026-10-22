@@ -30,7 +30,7 @@ Each feature distinguishes the React UI from the Spring Boot/Spring AI backend. 
 - **Source chunk:** A stored passage linked to a document and, when available, a page, section, or source offset.
 - **Safe error:** A user-readable message/code that does not disclose credentials, provider internals, stack traces, or unauthorized document content.
 - **MVP response mode:** Synchronous query/answer response. Document upload/ingestion may be asynchronous.
-- **Approved decisions:** Limits, providers, retention and tuning values come from [`implementation/product-decisions.md`](implementation/product-decisions.md) (DEC-001 to DEC-008): 10 MB upload limit, Ollama locally and OpenAI when deployed, no original-file storage, soft delete with a 7-day purge, chunk 800/100 tokens, top-K 5, context budget 4000 tokens, evidence threshold 0.70 (tuned per provider), worker concurrency 2.
+- **Approved decisions:** Limits, providers, retention and tuning values come from [`implementation/product-decisions.md`](implementation/product-decisions.md) (DEC-001 to DEC-009): 10 MB upload limit; Ollama and OpenAI selectable independently for chat and embeddings in local/development, with Ollama defaults locally and OpenAI defaults when deployed; no original-file storage; soft delete with a 7-day purge; chunk 800/100 tokens; top-K 5; context budget 4000 tokens; evidence threshold 0.70 (tuned per provider); worker concurrency 2. DEC-010 is proposed and remains unapproved.
 - **Still open:** exact model names and request quotas. OIDC provider is Keycloak (DEC-001).
 
 ## 2. Feature: Document Upload
@@ -67,7 +67,8 @@ An authorized Knowledge Manager can submit a supported document to an authorized
 | UP-04 | A caller submits an unsupported, empty, corrupt, or over-limit file. | The API rejects the request with a safe, user-readable error; no document becomes searchable and no active chunks/vectors are created. | API integration |
 | UP-05 | A client supplies a misleading extension or content type for a disallowed file. | Server-side validation rejects it; client-provided metadata alone cannot cause the file to be accepted. | API security/integration |
 | UP-06 | An upload is in progress or has failed validation. | The UI communicates the pending/error state, prevents unintended parallel duplicate submission, and provides an accessible recovery path. | UI component/E2E |
-| UP-07 | A file larger than 10 MB is submitted; a file of exactly 10 MB is submitted. | The larger file is rejected with a clear message; the 10 MB file is accepted. | API integration |
+| UP-07 | A file larger than 10 MiB is submitted; a file at the configured byte limit is submitted. | The larger file is rejected with `FILE_TOO_LARGE` and a size-specific safe message; the at-limit file proceeds to content validation. | API integration |
+| UP-09 | A PDF within the byte limit exceeds the configured page count, or extracted text exceeds its configured character limit. | The API returns HTTP 413 with `PDF_PAGE_LIMIT_EXCEEDED` or `EXTRACTED_CONTENT_TOO_LARGE`, respectively; the UI explains which limit was exceeded. | API integration + UI component |
 | UP-08 | A file with the same checksum as a non-deleted document in the same collection is uploaded. | The API returns `409 Conflict` and creates no document or job; the UI shows a duplicate message. Uploading the same file after the original is soft-deleted succeeds. | API integration + UI component |
 
 ### Out of scope

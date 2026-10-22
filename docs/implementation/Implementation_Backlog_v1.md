@@ -90,8 +90,8 @@
 - Align Spring Boot, Spring AI BOM/starters, Java 21, database driver, migration, security, and test dependencies to a compatible, reproducible dependency set.
 - Keep the Ollama and OpenAI starters and pgvector (DEC-002); remove the Anthropic and Pinecone starters.
 - Add typed externalized configuration for database, provider/model, chunking, retrieval bounds, upload limits, and worker/retry settings, using the DEC-003 and DEC-007 values as defaults.
-- Add a `local` profile (Ollama, local dev auth) and a deployed profile (OpenAI, OIDC) with placeholder-only examples and no committed secrets.
-- Use a separate embedding dimension and vector table per provider profile.
+- Add a `local` profile (Ollama defaults, local dev auth) and a deployed profile (OpenAI defaults, OIDC) with placeholder-only examples and no committed secrets. Allow Ollama/OpenAI selection independently for chat and embeddings in local/development.
+- Use an isolated compatible embedding dimension and vector table for the active embedding model/provider.
 
 **Acceptance / test requirements**
 
@@ -269,7 +269,7 @@
 
 **Work**
 
-- Configure the Spring AI embedding model (Ollama locally, OpenAI when deployed, DEC-002) and PostgreSQL/pgvector vector store, with the dimension set per profile.
+- Configure the Spring AI embedding model (Ollama/OpenAI selectable independently, DEC-002) and PostgreSQL/pgvector vector store, with the dimension and index matching the active embedding configuration.
 - Implement bounded batch embedding and persist vectors with stable chunk/document/index-version and authorization metadata.
 - Record embedding model/version and vector dimension; reject incompatible dimensions/configuration explicitly.
 - Provide test doubles for deterministic embeddings and a controlled provider smoke test.

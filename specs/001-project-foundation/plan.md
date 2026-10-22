@@ -26,7 +26,7 @@ The application repositories are separate. Keep specification changes here and i
 
 ## 3. Architecture Approach
 
-Run the React client, Spring Boot API, and PostgreSQL/pgvector as separate local services. The API is the trust boundary and coordinates identity, permissions, ingestion jobs, authorized retrieval, and answer generation. PostgreSQL stores application metadata, access scope, job/audit state, extracted text/chunks, and vectors. Ollama provides local chat and embedding models; deployed configuration uses OpenAI. Provider credentials and database credentials come from environment-specific secret configuration, not source control.
+Run the React client, Spring Boot API, and PostgreSQL/pgvector as separate local services. The API is the trust boundary and coordinates identity, permissions, ingestion jobs, authorized retrieval, and answer generation. PostgreSQL stores application metadata, access scope, job/audit state, extracted text/chunks, and vectors. Ollama and OpenAI are independently configurable for chat and embeddings; local defaults to Ollama/Ollama and deployed to OpenAI/OpenAI. Provider credentials and database credentials come from environment-specific secret configuration, not source control.
 
 ### Backend responsibilities
 
@@ -94,8 +94,8 @@ Do not implement feedback or conversation-history endpoints for MVP; they are de
 
 Externalize and validate database URL/credentials, active Spring profile, identity/issuer settings, chat and embedding provider/model/endpoints/credentials, embedding dimensions, upload limits, chunking and retrieval values, worker concurrency, timeouts/retry limits, and logging/metrics settings.
 
-- **Local profile:** local development authentication and Ollama for chat and embeddings; local PostgreSQL/pgvector.
-- **Deployed profile:** OIDC token validation and OpenAI chat/embedding configuration.
+- **Local profile:** local development authentication and Ollama for chat and embeddings by default; either capability may select OpenAI through configuration. Local PostgreSQL/pgvector.
+- **Deployed profile:** OIDC token validation and OpenAI chat/embedding configuration by default.
 - Keep local authentication disabled outside the `local` profile. Fail startup clearly when required configuration is missing; never silently use credentials or settings intended for local development.
 - Use the approved initial configuration values in DEC-007 as configurable defaults; evaluate and tune the evidence threshold per provider.
 
@@ -105,7 +105,7 @@ Use the existing frontend environment configuration to set the API base URL for 
 
 ### Local startup
 
-Document a reproducible order to start PostgreSQL/pgvector, verify readiness and migrations, start the backend with its local profile and configured Ollama endpoint, and run the frontend against the backend. Document required local environment variables using placeholders, health checks, test commands, and common startup/provider/database failures. Do not report the whole stack as running merely because an individual service starts.
+Document a reproducible order to start PostgreSQL/pgvector, verify readiness and migrations, start the backend with its local profile and selected AI providers, and run the frontend against the backend. Document required local environment variables using placeholders, health checks, test commands, and common startup/provider/database failures. Do not report the whole stack as running merely because an individual service starts.
 
 ## 7. Implementation Phases
 
@@ -150,7 +150,7 @@ Do not treat the proposed answer-quality, citation, or latency values in the sou
 | Item | Impact / handling |
 |---|---|
 | Spring Boot version mismatch | The intended stack in README describes Spring Boot 3.x, while the existing backend build uses 4.1.1. Confirm the supported version and Spring AI compatibility before modifying dependencies or writing version-specific setup instructions. |
-| Provider/model and vector dimensions | DEC-002 approves Ollama locally and OpenAI when deployed, but exact models remain open. Choose compatible embedding dimensions per profile and keep indexes isolated; re-index when changing model/provider. |
+| Provider/model and vector dimensions | DEC-002 supports independent Ollama/OpenAI provider selection for chat and embeddings; exact models remain configurable. Choose compatible embedding dimensions and keep indexes isolated; re-index when changing embedding model/provider. |
 | Local PostgreSQL/pgvector image and Compose ownership | Choose compatible versions and identify the repository owning shared local orchestration before adding configuration. |
 | Identity provider and local users | OIDC product remains open. Keep local mode isolated and test backend authorization independently of UI behavior. |
 | API contracts and error policy | Final schemas, pagination, quotas, idempotency details, and resource disclosure behavior need technical design before UI/backend integration. |
@@ -167,7 +167,7 @@ Recorded 2026-10-11. All rows below are approved by the project owner (models, P
 | Compose ownership | Decided | Backend repository owns `compose.yaml`; it runs PostgreSQL/pgvector only. |
 | Migrations | Decided | Flyway, versioned SQL in `src/main/resources/db/migration`. |
 | PostgreSQL / pgvector | Decided | `pgvector/pgvector:pg17`; default host port 5433 to avoid clashing with a local PostgreSQL. |
-| Vector tables | Decided | One table per provider profile: `vector_store_ollama` (768) and `vector_store_openai` (1536); entry id equals `document_chunks.id`. |
+| Vector tables | Decided | Isolated embedding indexes: `vector_store_ollama` (768) and `vector_store_openai` (1536); entry id equals `document_chunks.id`. |
 | Local models | Decided | Ollama `llama3.1:8b` chat, `nomic-embed-text` embeddings. |
 | Deployed models | Decided | OpenAI `gpt-4o-mini` chat, `text-embedding-3-small` embeddings. |
 | Identity provider | Decided | Keycloak (OIDC) for deployed mode; local-profile authentication for development (T04). |

@@ -111,7 +111,7 @@ The application schema and Spring AI vector-store schema may be separate tables 
 - Use idempotent job/document-version keys so retries do not create duplicate active chunks.
 - Re-index by building a new index version or otherwise ensuring old chunks are not simultaneously active after successful replacement.
 - Deletion is a soft delete (DEC-006): the document is excluded from retrieval, listings and citations immediately. A scheduled purge job removes its chunks, vectors and derived data 7 days later, audits the outcome and retries failures.
-- Each embedding provider has its own vector dimension (DEC-002). Use a separate vector table per provider profile, and re-index all documents when switching provider.
+- Chat and embedding providers are independently selected through backend configuration (DEC-002). Keep embedding indexes isolated by compatible model/dimension; changing embedding provider/model requires re-indexing documents into the selected index. Changing chat provider alone does not require re-indexing.
 - Do not claim one atomic transaction spans a database and external model provider. Persist progress and failure state around external calls, and design each stage for safe retry.
 - Keep database migrations versioned and apply them as part of controlled application startup/deployment.
 
@@ -289,7 +289,7 @@ The inspected Gradle build currently includes Spring AI starters for Anthropic, 
 | Keyword/hybrid search | Deferred until after the vector baseline (DEC-008). | Deferred. |
 | Ingestion execution | Bounded managed worker (concurrency 2) plus durable PostgreSQL job state; no Kafka in the MVP (DEC-008). | Approved. |
 | Identity | Local dev mode plus OIDC for deployed environments (DEC-001). OIDC provider: Keycloak. | Approved. |
-| Chat/embedding providers | Ollama locally, OpenAI when deployed (DEC-002). Exact model names set in configuration. | Approved. |
+| Chat/embedding providers | Ollama and OpenAI are independently selectable for chat and embeddings in local/development; Ollama/Ollama locally and OpenAI/OpenAI when deployed are defaults (DEC-002). | Approved. |
 | Original document storage | Not stored (DEC-005). | Approved. |
 | Conversation history | Deferred; questions and answers are not stored (DEC-008). | Approved. |
 | Backend/SPA delivery | Separate services in local development; final static hosting/reverse-proxy arrangement is deployment-specific. | Open. |

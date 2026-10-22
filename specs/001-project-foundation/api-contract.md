@@ -22,7 +22,9 @@
 | 403 | `FORBIDDEN` | Authenticated but the operation is not allowed at all |
 | 404 | `NOT_FOUND` | Missing or inaccessible resource |
 | 409 | `DUPLICATE_DOCUMENT` | Same checksum already exists in the collection (DEC-004) |
-| 413 | `FILE_TOO_LARGE` | File over 10 MB, or extracted text over the configured cap (DEC-003) |
+| 413 | `FILE_TOO_LARGE` | Uploaded file bytes exceed the configured upload limit (10 MiB by default) |
+| 413 | `PDF_PAGE_LIMIT_EXCEEDED` | PDF page count exceeds the configured extraction page limit |
+| 413 | `EXTRACTED_CONTENT_TOO_LARGE` | Extracted text exceeds the configured character limit |
 | 415 | `UNSUPPORTED_TYPE` | Extension/content not PDF, DOCX, TXT, Markdown |
 | 422 | `UNPROCESSABLE_DOCUMENT` | Corrupt or encrypted file detected during upload-time extraction |
 | 503 | `CHAT_PROVIDER_FAILED`, `CHAT_PROVIDER_TIMEOUT`, or `EMBEDDING_PROVIDER_FAILED` | A configured AI provider fails or times out; response contains a safe message |
@@ -35,7 +37,7 @@ All codes above are implemented in the backend (T04, T09, T11).
 | Method and path | Request | Success | Errors |
 |---|---|---|---|
 | `GET /api/v1/me` | — | `200` `{subject, role, readableCollectionIds[], manageableCollectionIds[]}` | 401 |
-| `POST /api/v1/documents` | multipart `file`, `collectionId`, optional `version`, `documentType`, `tags` | `202` `UploadAcceptedResponse` | 400, 401, 404, 409, 413, 415, 422 |
+| `POST /api/v1/documents` | multipart `file`, `collectionId`, optional `version`, `documentType`, `tags` | `202` `UploadAcceptedResponse` | 400, 401, 404, 409, 413 (`FILE_TOO_LARGE`, `PDF_PAGE_LIMIT_EXCEEDED`, `EXTRACTED_CONTENT_TOO_LARGE`), 415, 422 |
 | `GET /api/v1/documents` | query `collectionId?`, `status?`, `documentType?`, `tag?`, `page` (default 0), `size` (default 20, 1–100) | `200` `DocumentPage` (permitted documents only) | 400, 401 |
 | `GET /api/v1/documents/{id}` | — | `200` `DocumentResponse` | 401, 404 |
 | `POST /api/v1/documents/{id}/reindex` | — | `202` `DocumentResponse`; idempotent while already queued/processing | 401, 404 |
