@@ -1588,3 +1588,45 @@ Use `kind` only if you want to create a separate local multi-node Kubernetes clu
 - scheduling behavior closer to cloud Kubernetes.
 
 For the current local EKA Kubernetes setup, Docker Desktop Kubernetes is enough.
+
+## Create collection and grant user access
+Get PostgreSQL shell:
+``` bash
+kubectl exec -it -n eka statefulset/postgres -- psql -U eka -d eka
+```
+
+Check collections:
+
+``` sql
+SELECT id, name FROM collections;
+```
+
+If empty:
+``` sql
+INSERT INTO collections (name, description)
+VALUES ('Local Knowledge Base', 'My local EKA documents');
+```
+
+After login, copy the user subject UUID shown in the app.
+Grant access:
+``` sql
+INSERT INTO collection_grants (subject, collection_id, permission)
+SELECT '<subject-uuid>', id, 'MANAGE'
+FROM collections
+WHERE name = 'Local Knowledge Base';
+```
+
+Verify:
+``` sql
+SELECT c.name, g.permission
+FROM collection_grants g
+JOIN collections c ON c.id = g.collection_id
+WHERE g.subject = '<subject-uuid>';
+```
+
+Exit:
+``` sql
+\q
+```
+
+Refresh the app.
