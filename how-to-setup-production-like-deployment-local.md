@@ -488,107 +488,141 @@ For this Docker Desktop Kubernetes setup, `kind` is not required.
 ### 10. Enable Docker Desktop Kubernetes
 
 Open Docker Desktop:
-text Docker Desktop → Settings → Kubernetes → Enable Kubernetes
+Docker Desktop → Settings → Kubernetes → Enable Kubernetes
 
 Apply the change and wait until Kubernetes is running.
 
 Verify:
-bash kubectl config current-context kubectl get nodes
-``` 
-Expected current context:
-```
 
-text docker-desktop```
+```bash
+kubectl config current-context
+kubectl get nodes
+```
+Expected current context:
+
+```text
+docker-desktop
+```
 
 Expected node output is usually similar to:
-```
 
-text desktop-control-plane Ready``` 
+```text
+desktop-control-plane Ready
+```
 
 ### 11. Create Kubernetes manifest directory
 
 Run from the parent `EnterpriseKnowledgeAssitance` directory:
-```
 
-bash mkdir -p infra/k8s/local```
+```bash
+mkdir -p infra/k8s/local
+```
 
 Suggested structure:
-```
 
-text infra/ └── k8s/ └── local/ ├── namespace.yaml ├── configmap.yaml ├── postgres.yaml ├── keycloak.yaml ├── backend.yaml ├── frontend.yaml └── ingress.yaml``` 
+```text
+infra/ └── k8s/ └── local/ ├── namespace.yaml ├── configmap.yaml ├── postgres.yaml ├── keycloak.yaml ├── backend.yaml ├── frontend.yaml └── ingress.yaml
+```
 
 ### 12. Create namespace
 
 Create `infra/k8s/local/namespace.yaml`:
-```
 
-yaml apiVersion: v1 kind: Namespace metadata: name: eka```
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eka
+```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/namespace.yaml``` 
+```bash
+kubectl apply -f infra/k8s/local/namespace.yaml
+```
 
 Verify:
-```
 
-bash kubectl get namespaces```
+```bash
+kubectl get namespaces
+```
 
 ### 13. Create Kubernetes secret
 
 Create the local Kubernetes secret:
-```
 
-bash kubectl create secret generic eka-secrets
+```bash
+kubectl create secret generic eka-secrets
 --namespace eka
 --from-literal=POSTGRES_PASSWORD='replace-with-a-strong-local-database-password'
---from-literal=KEYCLOAK_ADMIN_PASSWORD='replace-with-a-different-strong-local-admin-password'``` 
-
-Verify:
+--from-literal=KEYCLOAK_ADMIN_PASSWORD='replace-with-a-different-strong-local-admin-password'
 ```
 
-bash kubectl get secret eka-secrets -n eka```
+Verify:
+
+```bash
+kubectl get secret eka-secrets -n eka
+```
 
 Do not commit real passwords to Git.
 
 To update the secret later:
-```
 
-bash kubectl create secret generic eka-secrets
+```bash
+kubectl create secret generic eka-secrets
 --namespace eka
 --from-literal=POSTGRES_PASSWORD='replace-with-new-local-database-password'
 --from-literal=KEYCLOAK_ADMIN_PASSWORD='replace-with-new-local-keycloak-password'
 --dry-run=client
--o yaml | kubectl apply -f -``` 
-
-If the output is:
+-o yaml | kubectl apply -f -
 ```
 
-text secret/eka-secrets unchanged```
+If the output is:
+
+```text
+secret/eka-secrets unchanged
+```
 
 then Kubernetes detected no effective value change.
 
 Pods do not automatically reload environment variables from updated secrets. Restart affected workloads after a secret change:
-```
 
-bash kubectl rollout restart deployment/backend -n eka kubectl rollout restart deployment/keycloak -n eka``` 
+```bash
+kubectl rollout restart deployment/backend -n eka
+kubectl rollout restart deployment/keycloak -n eka
+```
 
 If the PostgreSQL password changes after PostgreSQL has already initialized its data volume, changing the Kubernetes secret alone does not change the actual database user password. For a disposable local setup, delete and recreate the namespace. For a retained database, update the password inside PostgreSQL as well.
 
 ### 14. Create ConfigMap
 
 Create `infra/k8s/local/configmap.yaml`:
-```
 
-yaml apiVersion: v1 kind: ConfigMap metadata: name: eka-config namespace: eka data: POSTGRES_DB: eka POSTGRES_USER: eka
-SPRING_PROFILES_ACTIVE: oidc SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eka SPRING_DATASOURCE_USERNAME: eka SPRING_FLYWAY_USER: eka
-SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost/auth/realms/eka SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/eka/protocol/openid-connect/certs
-EKA_CRAG_ENABLED: "false" EKA_WEB_SEARCH_ENABLED: "false" EKA_WEB_SEARCH_TIMEOUT: "10s"```
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eka-config
+  namespace: eka
+data:
+  POSTGRES_DB: eka
+  POSTGRES_USER: eka
+  SPRING_PROFILES_ACTIVE: oidc
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eka
+  SPRING_DATASOURCE_USERNAME: eka
+  SPRING_FLYWAY_USER: eka
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost/auth/realms/eka
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/eka/protocol/openid-connect/certs
+  EKA_CRAG_ENABLED: "false"
+  EKA_WEB_SEARCH_ENABLED: "false"
+  EKA_WEB_SEARCH_TIMEOUT: "10s"
+```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/configmap.yaml``` 
+```bash
+kubectl apply -f infra/k8s/local/configmap.yaml
+```
 
 Important:
 
@@ -598,216 +632,543 @@ Important:
 ### 15. Create PostgreSQL manifest
 
 Create `infra/k8s/local/postgres.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: eka
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: eka
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg18
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eka-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U eka -d eka
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
 ```
-
-yaml apiVersion: v1 kind: Service metadata: name: postgres namespace: eka spec: ports: - name: postgres port: 5432 targetPort: 5432 selector: app: postgres
-
-apiVersion: apps/v1 kind: StatefulSet metadata: name: postgres namespace: eka spec: serviceName: postgres replicas: 1 selector: matchLabels: app: postgres template: metadata: labels: app: postgres spec: containers: - name: postgres image: pgvector/pgvector:pg18 ports: - containerPort: 5432 env: - name: POSTGRES_DB valueFrom: configMapKeyRef: name: eka-config key: POSTGRES_DB - name: POSTGRES_USER valueFrom: configMapKeyRef: name: eka-config key: POSTGRES_USER - name: POSTGRES_PASSWORD valueFrom: secretKeyRef: name: eka-secrets key: POSTGRES_PASSWORD volumeMounts: - name: postgres-storage mountPath: /var/lib/postgresql readinessProbe: exec: command: - sh - -c - pg_isready -U eka -d eka initialDelaySeconds: 10 periodSeconds: 10 volumeClaimTemplates: - metadata: name: postgres-storage spec: accessModes: - ReadWriteOnce resources: requests: storage: 5Gi```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/postgres.yaml``` 
+```bash
+kubectl apply -f infra/k8s/local/postgres.yaml
+```
 
 Verify:
-```
 
-bash kubectl get pods -n eka -w```
+```bash
+kubectl get pods -n eka -w
+```
 
 ### 16. Create Keycloak manifest
 
 Create `infra/k8s/local/keycloak.yaml`:
-```
 
-yaml apiVersion: v1 kind: Service metadata: name: keycloak namespace: eka spec: ports: - name: http port: 8080 targetPort: 8080 selector: app: keycloak
- 
-apiVersion: apps/v1 kind: Deployment metadata: name: keycloak namespace: eka spec: replicas: 1 selector: matchLabels: app: keycloak template: metadata: labels: app: keycloak spec: containers: - name: keycloak image: quay.io/keycloak/keycloak:26.0 args: - start-dev ports: - containerPort: 8080 env: - name: KC_BOOTSTRAP_ADMIN_USERNAME value: admin - name: KC_BOOTSTRAP_ADMIN_PASSWORD valueFrom: secretKeyRef: name: eka-secrets key: KEYCLOAK_ADMIN_PASSWORD - name: KC_HTTP_ENABLED value: "true" - name: KC_HTTP_RELATIVE_PATH value: /auth - name: KC_PROXY_HEADERS value: xforwarded - name: KC_HOSTNAME value: http://localhost/auth``` 
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: eka
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: keycloak
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: eka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.0
+          args:
+            - start-dev
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eka-secrets
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HTTP_RELATIVE_PATH
+              value: /auth
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HOSTNAME
+              value: http://localhost/auth
+```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/keycloak.yaml```
+```bash
+kubectl apply -f infra/k8s/local/keycloak.yaml
+```
 
 ### 17. Build backend and frontend images
 
 Run from the parent `EnterpriseKnowledgeAssitance` directory.
 
 Build backend:
-```
 
-bash docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend``` 
+```bash
+docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend
+```
 
 Build frontend:
-```
 
-bash docker build
+```bash
+docker build
 -t eka-frontend:local
 --build-arg VITE_API_BASE_URL=""
 --build-arg VITE_OIDC_AUTHORITY="http://localhost/auth/realms/eka"
 --build-arg VITE_OIDC_CLIENT_ID="eka-frontend"
-./enterprise-knowledge-assistant-frontend```
+./enterprise-knowledge-assistant-frontend
+```
 
 Verify:
-```
 
-bash docker images | grep eka``` 
+```bash
+docker images | grep eka
+```
 
 Expected:
-```
 
-text eka-backend local eka-frontend local```
+```text
+eka-backend local eka-frontend local
+```
 
 ### 18. Import local images into Docker Desktop Kubernetes node
 
 Docker Desktop Kubernetes may not see images from the normal Docker image store when deployments use `imagePullPolicy: Never`.
 
 Import the images into the Kubernetes node runtime:
-```
 
-bash docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -``` 
+```bash
+docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+```
 
 Verify inside the Kubernetes node:
-```
 
-bash docker exec -it desktop-control-plane ctr -n k8s.io images list | grep eka```
+```bash
+docker exec -it desktop-control-plane ctr -n k8s.io images list | grep eka
+```
 
 Expected image names include:
-```
 
-text docker.io/library/eka-backend:local docker.io/library/eka-frontend:local``` 
+```text
+docker.io/library/eka-backend:local docker.io/library/eka-frontend:local
+```
 
 ### 19. Create backend manifest
 
 Create `infra/k8s/local/backend.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: eka
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: eka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: eka-backend:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eka-secrets
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_FLYWAY_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: SPRING_FLYWAY_USER
+            - name: SPRING_FLYWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eka-secrets
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+            - name: EKA_CRAG_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: EKA_CRAG_ENABLED
+            - name: EKA_WEB_SEARCH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: EKA_WEB_SEARCH_ENABLED
+            - name: EKA_WEB_SEARCH_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: eka-config
+                  key: EKA_WEB_SEARCH_TIMEOUT
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
 ```
-
-yaml apiVersion: v1 kind: Service metadata: name: backend namespace: eka spec: ports: - name: http port: 8080 targetPort: 8080 selector: app: backend
-
-apiVersion: apps/v1 kind: Deployment metadata: name: backend namespace: eka spec: replicas: 1 selector: matchLabels: app: backend template: metadata: labels: app: backend spec: containers: - name: backend image: eka-backend:local imagePullPolicy: Never ports: - containerPort: 8080 env: - name: SPRING_PROFILES_ACTIVE valueFrom: configMapKeyRef: name: eka-config key: SPRING_PROFILES_ACTIVE - name: SPRING_DATASOURCE_URL valueFrom: configMapKeyRef: name: eka-config key: SPRING_DATASOURCE_URL - name: SPRING_DATASOURCE_USERNAME valueFrom: configMapKeyRef: name: eka-config key: SPRING_DATASOURCE_USERNAME - name: SPRING_DATASOURCE_PASSWORD valueFrom: secretKeyRef: name: eka-secrets key: POSTGRES_PASSWORD - name: SPRING_FLYWAY_USER valueFrom: configMapKeyRef: name: eka-config key: SPRING_FLYWAY_USER - name: SPRING_FLYWAY_PASSWORD valueFrom: secretKeyRef: name: eka-secrets key: POSTGRES_PASSWORD - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI valueFrom: configMapKeyRef: name: eka-config key: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI valueFrom: configMapKeyRef: name: eka-config key: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI - name: EKA_CRAG_ENABLED valueFrom: configMapKeyRef: name: eka-config key: EKA_CRAG_ENABLED - name: EKA_WEB_SEARCH_ENABLED valueFrom: configMapKeyRef: name: eka-config key: EKA_WEB_SEARCH_ENABLED - name: EKA_WEB_SEARCH_TIMEOUT valueFrom: configMapKeyRef: name: eka-config key: EKA_WEB_SEARCH_TIMEOUT readinessProbe: httpGet: path: /actuator/health port: 8080 initialDelaySeconds: 30 periodSeconds: 10 livenessProbe: httpGet: path: /actuator/health port: 8080 initialDelaySeconds: 60 periodSeconds: 30```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/backend.yaml``` 
+```bash
+kubectl apply -f infra/k8s/local/backend.yaml
+```
 
 ### 20. Create frontend manifest
 
 Create `infra/k8s/local/frontend.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: eka
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector:
+    app: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: eka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: eka-frontend:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
 ```
-
-yaml apiVersion: v1 kind: Service metadata: name: frontend namespace: eka spec: ports: - name: http port: 80 targetPort: 80 selector: app: frontend
-
-apiVersion: apps/v1 kind: Deployment metadata: name: frontend namespace: eka spec: replicas: 1 selector: matchLabels: app: frontend template: metadata: labels: app: frontend spec: containers: - name: frontend image: eka-frontend:local imagePullPolicy: Never ports: - containerPort: 80```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/frontend.yaml``` 
+```bash
+kubectl apply -f infra/k8s/local/frontend.yaml
+```
 
 Verify pods:
-```
 
-bash kubectl get pods -n eka -w```
+```bash
+kubectl get pods -n eka -w
+```
 
 Expected:
-```
 
-text backend-... 1/1 Running frontend-... 1/1 Running keycloak-... 1/1 Running postgres-0 1/1 Running``` 
+```text
+backend-... 1/1 Running frontend-... 1/1 Running keycloak-... 1/1 Running postgres-0 1/1 Running
+```
 
 ### 21. Install NGINX Ingress Controller
 
 Install the Docker Desktop compatible NGINX Ingress Controller:
-```
 
-bash kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/cloud/deploy.yaml```
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/cloud/deploy.yaml
+```
 
 Wait for the controller:
-```
 
-bash kubectl get pods -n ingress-nginx -w``` 
+```bash
+kubectl get pods -n ingress-nginx -w
+```
 
 ### 22. Create Ingress
 
 Create `infra/k8s/local/ingress.yaml`:
-```
 
-yaml apiVersion: networking.k8s.io/v1 kind: Ingress metadata: name: eka-ingress namespace: eka spec: ingressClassName: nginx rules: - host: localhost http: paths: - path: /api pathType: Prefix backend: service: name: backend port: number: 8080 - path: /actuator/health pathType: Exact backend: service: name: backend port: number: 8080 - path: /auth/callback pathType: Prefix backend: service: name: frontend port: number: 80 - path: /auth pathType: Prefix backend: service: name: keycloak port: number: 8080 - path: / pathType: Prefix backend: service: name: frontend port: number: 80```
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: eka-ingress
+  namespace: eka
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: localhost
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /actuator/health
+            pathType: Exact
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /auth/callback
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+```
 
 Apply it:
-```
 
-bash kubectl apply -f infra/k8s/local/ingress.yaml``` 
+```bash
+kubectl apply -f infra/k8s/local/ingress.yaml
+```
 
 Verify:
-```
 
-bash kubectl get ingress -n eka kubectl describe ingress eka-ingress -n eka```
+```bash
+kubectl get ingress -n eka
+kubectl describe ingress eka-ingress -n eka
+```
 
 Test backend health through Ingress:
-```
 
-bash curl http://localhost/actuator/health``` 
+```bash
+curl http://localhost/actuator/health
+```
 
 Expected:
-```
 
-json {"groups":["liveness","readiness"],"status":"UP"}```
+```json
+{"groups":["liveness","readiness"],"status":"UP"}
+```
 
 Open the frontend:
-```
 
-text http://localhost``` 
+```text
+http://localhost
+```
 
 Open Keycloak:
-```
 
-text http://localhost/auth/```
+```text
+http://localhost/auth/
+```
 
 ### 23. Configure Keycloak for Kubernetes local setup
 
 Open:
-```
 
-text http://localhost/auth/``` 
+```text
+http://localhost/auth/
+```
 
 Log in as `admin` using the local `KEYCLOAK_ADMIN_PASSWORD`.
 
 Create realm:
-```
 
-text eka```
+```text
+eka
+```
 
 Create OIDC client:
-```
 
-text Client ID: eka-frontend Client type: OpenID Connect``` 
+```text
+Client ID: eka-frontend Client type: OpenID Connect
+```
 
 Set:
-```
 
-text Client authentication: Off Authorization: Off Standard flow: On Direct access grants: Off Service accounts roles: Off```
+```text
+Client authentication: Off Authorization: Off Standard flow: On Direct access grants: Off Service accounts roles: Off
+```
 
 Set login URLs:
-```
 
-text Root URL: http://localhost Valid redirect URIs: http://localhost/auth/callback Valid post logout redirect URIs: http://localhost/login Web origins: http://localhost``` 
+```text
+Root URL: http://localhost Valid redirect URIs: http://localhost/auth/callback Valid post logout redirect URIs: http://localhost/login Web origins: http://localhost
+```
 
 Open the client Advanced settings and set:
-```
 
-text PKCE challenge method: S256```
+```text
+PKCE challenge method: S256
+```
 
 Create a user, set a password, and turn Temporary off.
 
 Verify OIDC discovery:
-```
 
-bash curl http://localhost/auth/realms/eka/.well-known/openid-configuration``` 
+```bash
+curl http://localhost/auth/realms/eka/.well-known/openid-configuration
+```
 
 It must contain:
-```
 
-json {"issuer":"http://localhost/auth/realms/eka"}```
+```json
+{"issuer":"http://localhost/auth/realms/eka"}
+```
 
 ### 24. Create a collection and grant your SSO user access in Kubernetes
 
@@ -816,34 +1177,40 @@ After the user first signs in, EKA creates them as a `MEMBER` but gives no colle
 Copy the UUID displayed as `Signed in as ...` in the app. This is the OIDC subject, not the Keycloak username.
 
 Open PostgreSQL shell:
-```
 
-bash kubectl exec -it -n eka statefulset/postgres -- psql -U eka -d eka``` 
+```bash
+kubectl exec -it -n eka statefulset/postgres -- psql -U eka -d eka
+```
 
 Check collections:
-```
 
-sql SELECT id, name FROM collections;```
+```sql
+SELECT id, name FROM collections;
+```
 
 If no collection exists:
-```
 
-sql INSERT INTO collections (name, description) VALUES ('Local Knowledge Base', 'My local EKA documents');``` 
+```sql
+INSERT INTO collections (name, description) VALUES ('Local Knowledge Base', 'My local EKA documents');
+```
 
 Grant upload and read access. Replace `<subject-uuid>`:
-```
 
-sql INSERT INTO collection_grants (subject, collection_id, permission) SELECT '<subject-uuid>', id, 'MANAGE' FROM collections WHERE name = 'Local Knowledge Base';```
+```sql
+INSERT INTO collection_grants (subject, collection_id, permission) SELECT '<subject-uuid>', id, 'MANAGE' FROM collections WHERE name = 'Local Knowledge Base';
+```
 
 Verify:
-```
 
-sql SELECT c.name, g.permission FROM collection_grants g JOIN collections c ON c.id = g.collection_id WHERE g.subject = '<subject-uuid>';``` 
+```sql
+SELECT c.name, g.permission FROM collection_grants g JOIN collections c ON c.id = g.collection_id WHERE g.subject = '<subject-uuid>';
+```
 
 Exit:
-```
 
-sql \q```
+```sql
+\q
+```
 
 Refresh the app or sign in again. `MANAGE` permits uploads and reads; `READ` is read-only.
 
@@ -852,19 +1219,22 @@ Refresh the app or sign in again. `MANAGE` permits uploads and reads; `READ` is 
 ### Pods show `ErrImageNeverPull`
 
 Symptom:
-```
 
-text backend-... 0/1 ErrImageNeverPull frontend-... 0/1 ErrImageNeverPull``` 
+```text
+backend-... 0/1 ErrImageNeverPull frontend-... 0/1 ErrImageNeverPull
+```
 
 Check pod details:
-```
 
-bash kubectl describe pod <pod-name> -n eka```
+```bash
+kubectl describe pod <pod-name> -n eka
+```
 
 Typical event:
-```
 
-text Container image "eka-backend:local" is not present with pull policy of Never``` 
+```text
+Container image "eka-backend:local" is not present with pull policy of Never
+```
 
 Reason:
 
@@ -874,37 +1244,43 @@ Reason:
 - The image must exist inside the Kubernetes node runtime.
 
 Solution:
-```
 
-bash docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/backend -n eka```
+```bash
+docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend
+docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/backend -n eka
+```
 
 For frontend:
-```
 
-bash docker build
+```bash
+docker build
 -t eka-frontend:local
 --build-arg VITE_API_BASE_URL=""
 --build-arg VITE_OIDC_AUTHORITY="http://localhost/auth/realms/eka"
 --build-arg VITE_OIDC_CLIENT_ID="eka-frontend"
 ./enterprise-knowledge-assistant-frontend
-docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/frontend -n eka``` 
+docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/frontend -n eka
+```
 
 Verify:
-```
 
-bash kubectl get pods -n eka -w```
+```bash
+kubectl get pods -n eka -w
+```
 
 Expected:
-```
 
-text backend-... 1/1 Running frontend-... 1/1 Running keycloak-... 1/1 Running postgres-0 1/1 Running``` 
+```text
+backend-... 1/1 Running frontend-... 1/1 Running keycloak-... 1/1 Running postgres-0 1/1 Running
+```
 
 ### `kind: command not found`
 
 Symptom:
-```
 
-text zsh: command not found: kind```
+```text
+zsh: command not found: kind
+```
 
 Reason:
 
@@ -915,26 +1291,31 @@ Solution:
 For the Docker Desktop Kubernetes setup, no action is required. `kind` is not needed.
 
 Only install `kind` if you specifically want a separate multi-node local Kubernetes cluster:
-```
 
-bash brew install kind``` 
+```bash
+brew install kind
+```
 
 For this Docker Desktop setup, use:
-```
 
-bash docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -```
+```bash
+docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+```
 
 instead of:
-```
 
-bash kind load docker-image ...``` 
+```bash
+kind load docker-image ...
+```
 
 ### `secret/eka-secrets unchanged`
 
 Symptom:
-```
 
-text secret/eka-secrets unchanged```
+```text
+secret/eka-secrets unchanged
+```
 
 Reason:
 
@@ -943,19 +1324,22 @@ Kubernetes compared the new generated Secret manifest with the existing `eka-sec
 Solution:
 
 Verify the current decoded value carefully:
-```
 
-bash kubectl get secret eka-secrets -n eka
+```bash
+kubectl get secret eka-secrets -n eka
 -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 --decode echo
 bash kubectl get secret eka-secrets -n eka
--o jsonpath='{.data.KEYCLOAK_ADMIN_PASSWORD}' | base64 --decode echo``` 
+-o jsonpath='{.data.KEYCLOAK_ADMIN_PASSWORD}' | base64 --decode echo
+```
 
 If the values are already correct, no change is needed.
 
 If you changed secret values, restart affected pods:
-```
 
-bash kubectl rollout restart deployment/backend -n eka kubectl rollout restart deployment/keycloak -n eka```
+```bash
+kubectl rollout restart deployment/backend -n eka
+kubectl rollout restart deployment/keycloak -n eka
+```
 
 ### PostgreSQL password changed but backend cannot connect
 
@@ -964,31 +1348,36 @@ Reason:
 Changing the Kubernetes Secret does not automatically update the password stored inside an already-initialized PostgreSQL data volume.
 
 For a disposable local environment, reset the namespace:
-```
 
-bash kubectl delete namespace eka``` 
+```bash
+kubectl delete namespace eka
+```
 
 Then recreate the namespace, secret, config, and workloads.
 
 If you want to keep the existing database, update the PostgreSQL user password manually:
-```
 
-bash kubectl exec -it -n eka statefulset/postgres -- psql -U eka -d eka```
+```bash
+kubectl exec -it -n eka statefulset/postgres -- psql -U eka -d eka
+```
 
 Then run:
-```
 
-sql ALTER USER eka WITH PASSWORD 'replace-with-new-local-database-password';``` 
+```sql
+ALTER USER eka WITH PASSWORD 'replace-with-new-local-database-password';
+```
 
 Exit:
-```
 
-sql \q```
+```sql
+\q
+```
 
 Restart backend:
-```
 
-bash kubectl rollout restart deployment/backend -n eka``` 
+```bash
+kubectl rollout restart deployment/backend -n eka
+```
 
 ### Backend or frontend image was rebuilt but app still behaves like the old version
 
@@ -999,20 +1388,23 @@ For Docker Desktop Kubernetes with `imagePullPolicy: Never`, rebuilding the Dock
 Solution:
 
 Backend:
-```
 
-bash docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/backend -n eka```
+```bash
+docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend
+docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/backend -n eka
+```
 
 Frontend:
-```
 
-bash docker build
+```bash
+docker build
 -t eka-frontend:local
 --build-arg VITE_API_BASE_URL=""
 --build-arg VITE_OIDC_AUTHORITY="http://localhost/auth/realms/eka"
 --build-arg VITE_OIDC_CLIENT_ID="eka-frontend"
 ./enterprise-knowledge-assistant-frontend
-docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/frontend -n eka``` 
+docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/frontend -n eka
+```
 
 ### `/auth/callback` returns 404 in Kubernetes
 
@@ -1025,20 +1417,22 @@ Solution:
 Confirm the Ingress contains `/auth/callback` routed to the frontend service and `/auth` routed to the Keycloak service.
 
 Also confirm the frontend Nginx configuration contains:
-```
 
-nginx try_files uriuri/ /index.html;```
+```nginx
+try_files uriuri/ /index.html;
+```
 
 Rebuild and re-import frontend after changing Nginx or Vite values:
-```
 
-bash docker build
+```bash
+docker build
 -t eka-frontend:local
 --build-arg VITE_API_BASE_URL=""
 --build-arg VITE_OIDC_AUTHORITY="http://localhost/auth/realms/eka"
 --build-arg VITE_OIDC_CLIENT_ID="eka-frontend"
 ./enterprise-knowledge-assistant-frontend
-docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/frontend -n eka``` 
+docker save eka-frontend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import - kubectl rollout restart deployment/frontend -n eka
+```
 
 ### `/api/v1/me` returns `UNAUTHENTICATED` after SSO in Kubernetes
 
@@ -1047,109 +1441,141 @@ Reason:
 The issuer URI or JWKS URI may not match the Kubernetes local Keycloak setup.
 
 Confirm these backend environment values:
-```
 
-text SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost/auth/realms/eka SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/auth/realms/eka/protocol/openid-connect/certs```
+```text
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost/auth/realms/eka SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/auth/realms/eka/protocol/openid-connect/certs
+```
 
 Verify OIDC discovery:
-```
 
-bash curl http://localhost/auth/realms/eka/.well-known/openid-configuration``` 
+```bash
+curl http://localhost/auth/realms/eka/.well-known/openid-configuration
+```
 
 The issuer must be:
-```
 
-json {"issuer":"http://localhost/auth/realms/eka"}```
+```json
+{"issuer":"http://localhost/auth/realms/eka"}
+```
 
 Restart backend after config changes:
-```
 
-bash kubectl rollout restart deployment/backend -n eka``` 
+```bash
+kubectl rollout restart deployment/backend -n eka
+```
 
 ### Ingress does not respond at `http://localhost`
 
 Check Ingress Controller pods:
-```
 
-bash kubectl get pods -n ingress-nginx```
+```bash
+kubectl get pods -n ingress-nginx
+```
 
 Check EKA Ingress:
-```
 
-bash kubectl get ingress -n eka kubectl describe ingress eka-ingress -n eka``` 
+```bash
+kubectl get ingress -n eka
+kubectl describe ingress eka-ingress -n eka
+```
 
 Check services:
-```
 
-bash kubectl get svc -n eka```
+```bash
+kubectl get svc -n eka
+```
 
 If needed, verify services directly with port-forward.
 
 Backend:
-```
 
-bash kubectl port-forward -n eka service/backend 8080:8080``` 
+```bash
+kubectl port-forward -n eka service/backend 8080:8080
+```
 
 Then:
-```
 
-bash curl http://localhost:8080/actuator/health```
+```bash
+curl http://localhost:8080/actuator/health
+```
 
 Frontend:
-```
 
-bash kubectl port-forward -n eka service/frontend 3000:80``` 
+```bash
+kubectl port-forward -n eka service/frontend 3000:80
+```
 
 Then open:
-```
 
-text http://localhost:3000```
+```text
+http://localhost:3000
+```
 
 Keycloak:
-```
 
-bash kubectl port-forward -n eka service/keycloak 8081:8080``` 
+```bash
+kubectl port-forward -n eka service/keycloak 8081:8080
+```
 
 Then open:
-```
 
-text http://localhost:8081/auth/```
+```text
+http://localhost:8081/auth/
+```
 
 ## Kubernetes useful commands
-```
 
-bash kubectl get all -n eka kubectl get pods -n eka -w kubectl get svc -n eka kubectl get ingress -n eka kubectl logs -n eka deployment/backend -f kubectl logs -n eka deployment/frontend -f kubectl logs -n eka deployment/keycloak -f kubectl logs -n eka statefulset/postgres -f kubectl describe pod <pod-name> -n eka kubectl rollout restart deployment/backend -n eka kubectl rollout restart deployment/frontend -n eka kubectl rollout restart deployment/keycloak -n eka kubectl delete namespace eka``` 
+```bash
+kubectl get all -n eka
+kubectl get pods -n eka -w
+kubectl get svc -n eka
+kubectl get ingress -n eka
+kubectl logs -n eka deployment/backend -f
+kubectl logs -n eka deployment/frontend -f
+kubectl logs -n eka deployment/keycloak -f
+kubectl logs -n eka statefulset/postgres -f
+kubectl describe pod <pod-name> -n eka
+kubectl rollout restart deployment/backend -n eka
+kubectl rollout restart deployment/frontend -n eka
+kubectl rollout restart deployment/keycloak -n eka
+kubectl delete namespace eka
+```
 
 ## Why Docker Desktop Kubernetes needs image import
 
 With Docker Compose, containers are started by Docker directly from images in the normal Docker image store.
 
 With Docker Desktop Kubernetes, the Kubernetes node uses a container runtime inside the Kubernetes node. When a Deployment uses:
-```
 
-yaml imagePullPolicy: Never```
+```yaml
+imagePullPolicy: Never
+```
 
 Kubernetes only starts the pod if the image already exists inside that node runtime.
 
 That is why this may fail:
-```
 
-bash docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend kubectl rollout restart deployment/backend -n eka``` 
+```bash
+docker build -t eka-backend:local ./enterprise-knowledge-assistant-backend kubectl rollout restart deployment/backend -n eka
+```
 
 with:
-```
 
-text ErrImageNeverPull```
+```text
+ErrImageNeverPull
+```
 
 The fix is to import the built image into the Kubernetes node runtime:
-```
 
-bash docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -``` 
+```bash
+docker save eka-backend:local | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+```
 
 Then restart the deployment:
-```
 
-bash kubectl rollout restart deployment/backend -n eka```
+```bash
+kubectl rollout restart deployment/backend -n eka
+```
 
 ## When to use kind
 
@@ -1162,4 +1588,3 @@ Use `kind` only if you want to create a separate local multi-node Kubernetes clu
 - scheduling behavior closer to cloud Kubernetes.
 
 For the current local EKA Kubernetes setup, Docker Desktop Kubernetes is enough.
-```
