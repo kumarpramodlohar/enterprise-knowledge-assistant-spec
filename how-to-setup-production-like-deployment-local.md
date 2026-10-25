@@ -1,593 +1,453 @@
-How to setup production like deployment in a local mac os
+# Production-like local EKA setup on macOS
 
-Goal
+This beginner guide runs Enterprise Knowledge Assistant (EKA) locally with Docker Desktop, HTTPS, Keycloak SSO, PostgreSQL/pgvector, Caddy, Spring Boot, and React.
 
-Run locally at:
+> This is a local development environment. Keycloak uses `start-dev`; do not use this configuration unchanged in production.
 
-https://localhost:8443        → frontend
+## URLs
 
-https://localhost:8443/api    → backend
+| URL | Service |
+| --- | --- |
+| `https://localhost:8443` | React frontend |
+| `https://localhost:8443/api/...` | Spring Boot backend |
+| `https://localhost:8443/auth/` | Keycloak |
+| `https://localhost:8443/actuator/health` | Backend health check |
 
-https://localhost:8443/auth   → Keycloak
+## Prerequisites
 
-Use Docker Desktop on macOS.
+- macOS with Docker Desktop installed and running.
+- Homebrew.
+- These sibling folders:
 
-Create local TLS certificate
+```text
+EnterpriseKnowledgeAssitance/
+├── enterprise-knowledge-assistant-backend/
+├── enterprise-knowledge-assistant-frontend/
+├── enterprise-knowledge-assistant-spec/
+└── infra/local/
+```
 
-Install mkcert, then create a certificate:
+Run commands from `EnterpriseKnowledgeAssitance` unless stated otherwise.
 
+## 1. HTTPS certificate
+
+```bash
 brew install mkcert
-
-mkcert -install (may ask sudo password, put your mac login password than enter)
-
+mkcert -install
 mkdir -p infra/local/certs
-
 mkcert -cert-file infra/local/certs/localhost.pem \
+  -key-file infra/local/certs/localhost-key.pem \
+  localhost 127.0.0.1 ::1
+```
 
--key-file infra/local/certs/localhost-key.pem \
+The password prompt from `mkcert -install` expects your macOS login password.
 
-localhost 127.0.0.1 ::1
+## 2. Backend container
 
-2. Add backend Dockerfile
+Create `enterprise-knowledge-assistant-backend/Dockerfile`:
 
-Create enterprise-knowledge-assistant-backend/Dockerfile:
-
+```dockerfile
 FROM eclipse-temurin:21-jdk AS build
-
 WORKDIR /app
-
 COPY gradle gradle
-
 COPY gradlew build.gradle settings.gradle ./
-
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
-
 COPY src src
-
 RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre
-
 WORKDIR /app
-
 COPY --from=build /app/build/libs/*.jar app.jar
-
 EXPOSE 8080
-
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+```
 
-Create enterprise-knowledge-assistant-backend/.dockerignore:
+Create `enterprise-knowledge-assistant-backend/.dockerignore`:
 
+```text
 .git
-
 .gradle
-
 build
-
 .env
-
 *.iml
-
 .idea
+```
 
-Add frontend Dockerfile
+> On Apple Silicon, the Compose file below uses `platform: linux/arm64`. If you receive `Exec format error`, run `docker compose build --no-cache backend`.
 
-Create enterprise-knowledge-assistant-frontend/Dockerfile:
+## 3. Frontend container
 
+Create `enterprise-knowledge-assistant-frontend/Dockerfile`:
+
+```dockerfile
 FROM node:24-alpine AS build
-
 WORKDIR /app
-
 COPY package*.json ./
-
 RUN npm ci
-
 COPY . .
-
 ARG VITE_API_BASE_URL=
-
 ARG VITE_OIDC_AUTHORITY
-
 ARG VITE_OIDC_CLIENT_ID=eka-frontend
-
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
 ENV VITE_OIDC_AUTHORITY=$VITE_OIDC_AUTHORITY
-
 ENV VITE_OIDC_CLIENT_ID=$VITE_OIDC_CLIENT_ID
-
 RUN npm run build
 
 FROM nginx:1.27-alpine
-
 COPY --from=build /app/dist /usr/share/nginx/html
-
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
+```
 
-Create enterprise-knowledge-assistant-frontend/.dockerignore:
+Create `enterprise-knowledge-assistant-frontend/nginx.conf`:
 
+```nginx
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+The `try_files` line is needed so React can process `/auth/callback` after Keycloak sign-in.
+
+Create `enterprise-knowledge-assistant-frontend/.dockerignore`:
+
+```text
 .git
-
 node_modules
-
 dist
-
 .env
-
 *.iml
-
 .idea
+```
 
-4. Create Caddy config
+## 4. Local passwords and Git safety
 
-Create infra/local/Caddyfile:
+Create `infra/local/.env` and restrict access:
 
-https://localhost:8443 {
+```bash
+touch infra/local/.env
+chmod 600 infra/local/.env
+```
 
-tls /certs/localhost.pem /certs/localhost-key.pem
+Add passwords:
 
-handle /auth {
+```dotenv
+POSTGRES_PASSWORD=replace-with-a-strong-local-database-password
+KEYCLOAK_ADMIN_PASSWORD=replace-with-a-different-strong-local-admin-password
+```
 
-reverse_proxy keycloak:8080
+Create or update `infra/.gitignore`:
 
-}
-
-handle /api/* {
-
-reverse_proxy backend:8080
-
-}
-
-handle /auth/* {
-
-reverse_proxy keycloak:8080
-
-}
-
-handle /actuator/health {
-
-reverse_proxy backend:8080
-
-}
-
-handle {
-
-reverse_proxy frontend:80
-
-}
-
-}
-
-Note: You do not need to install Caddy on macOS.
-
-Docker downloads and runs the Caddy container when you execute:
-
-docker compose up --build
-
-5. Create Compose file
-
-Create infra/local/compose.yaml:
-
-services:
-
-postgres:
-
-image: pgvector/pgvector:pg18
-
-environment:
-
-POSTGRES_DB: eka
-
-POSTGRES_USER: eka
-
-POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-
-volumes:
-
-- postgres_data:/var/lib/postgresql
-
-healthcheck:
-
-test: ["CMD-SHELL", "pg_isready -U eka -d eka"]
-
-interval: 10s
-
-timeout: 5s
-
-retries: 10
-
-keycloak:
-
-image: quay.io/keycloak/keycloak:26.0
-
-command: start-dev
-
-environment:
-
-KC_BOOTSTRAP_ADMIN_USERNAME: admin
-
-KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
-
-KC_HTTP_ENABLED: "true"
-
-KC_HTTP_RELATIVE_PATH: /auth
-
-KC_PROXY_HEADERS: xforwarded
-
-KC_HOSTNAME: https://localhost:8443/auth
-
-depends_on:
-
-postgres:
-
-condition: service_healthy
-
-backend:
-
-platform: linux/arm64
-
-build:
-
-context: ../../enterprise-knowledge-assistant-backend
-
-environment:
-
-SPRING_PROFILES_ACTIVE: oidc
-
-SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eka
-
-SPRING_DATASOURCE_USERNAME: eka
-
-SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-
-SPRING_FLYWAY_USER: eka
-
-SPRING_FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-
-SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://localhost:8443/auth/realms/eka
-
-EKA_CRAG_ENABLED: "false"
-
-EKA_WEB_SEARCH_ENABLED: "false"
-
-depends_on:
-
-postgres:
-
-condition: service_healthy
-
-frontend:
-
-platform: linux/arm64
-
-build:
-
-context: ../../enterprise-knowledge-assistant-frontend
-
-args:
-
-VITE_API_BASE_URL: ""
-
-VITE_OIDC_AUTHORITY: https://localhost:8443/auth/realms/eka
-
-VITE_OIDC_CLIENT_ID: eka-frontend
-
-caddy:
-
-image: caddy:2.8-alpine
-
-ports:
-
-- "8443:8443"
-
-volumes:
-
-- ./Caddyfile:/etc/caddy/Caddyfile:ro
-
-- ./certs:/certs:ro
-
-depends_on:
-
-- frontend
-
-- backend
-
-- keycloak
-
-volumes:
-
-postgres_data:
-
-Do not commit real passwords. Later, move them to .env.
-
-1. Create the .env file
-
-From infra/local:
-
-touch .env
-
-chmod 600 .env
-
-POSTGRES_PASSWORD=<your password>
-
-KEYCLOAK_ADMIN_PASSWORD=<your password>
-
-chmod 600 means only your macOS user can read and write it.
-
-2. Add local passwords
-
-Open infra/local/.env and add:
-
-POSTGRES_PASSWORD=choose-a-strong-local-postgres-password
-
-KEYCLOAK_ADMIN_PASSWORD=choose-a-different-local-keycloak-password
-
-For example, use a password manager to generate the real values. Do not copy those example values into a public repository.
-
-3. Update compose.yaml
-
-Replace hardcoded values:
-
-POSTGRES_PASSWORD: change-this-local-password
-
-with:
-
-POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-
-4. Prevent accidental Git commits
-
-Create infra/.gitignore:
-
+```gitignore
 local/.env
-
 local/certs/
+```
 
-Do not commit .env or the private certificate key.
+Never commit passwords, certificates, access tokens, or callback URLs containing a `code` value.
 
-5. Validate variables safely
+## 5. Caddy reverse proxy
 
-From infra/local:
+Create `infra/local/Caddyfile`:
 
-docker compose config  (very important command, here in a output you can see your real password which is you put inside the .env file variables)
+```caddy
+https://localhost:8443 {
+    tls /certs/localhost.pem /certs/localhost-key.pem
 
-This verifies that Compose can resolve the variables. Be careful: it can display resolved passwords in Terminal. Do not share or paste this output.
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
 
-6. Start the stack
+    handle /actuator/health {
+        reverse_proxy backend:8080
+    }
 
+    # Keep this before /auth/*.
+    handle /auth/callback {
+        reverse_proxy frontend:80
+    }
+
+    handle /auth {
+        reverse_proxy keycloak:8080
+    }
+
+    handle /auth/* {
+        reverse_proxy keycloak:8080
+    }
+
+    handle {
+        reverse_proxy frontend:80
+    }
+}
+```
+
+Caddy runs in Docker. You do not need to install it on macOS.
+
+## 6. Docker Compose
+
+Create `infra/local/compose.yaml`:
+
+```yaml
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_DB: eka
+      POSTGRES_USER: eka
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      # PostgreSQL 18+ uses this parent directory.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eka -d eka"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: https://localhost:8443/auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    platform: linux/arm64
+    build:
+      context: ../../enterprise-knowledge-assistant-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: oidc
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eka
+      SPRING_DATASOURCE_USERNAME: eka
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      SPRING_FLYWAY_USER: eka
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://localhost:8443/auth/realms/eka
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/eka/protocol/openid-connect/certs
+      EKA_CRAG_ENABLED: "false"
+      EKA_WEB_SEARCH_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    platform: linux/arm64
+    build:
+      context: ../../enterprise-knowledge-assistant-frontend
+      args:
+        VITE_API_BASE_URL: ""
+        VITE_OIDC_AUTHORITY: https://localhost:8443/auth/realms/eka
+        VITE_OIDC_CLIENT_ID: eka-frontend
+
+  caddy:
+    image: caddy:2.8-alpine
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+    depends_on:
+      - frontend
+      - backend
+      - keycloak
+
+volumes:
+  postgres_data:
+```
+
+Important:
+
+- For PostgreSQL 18+, mount `/var/lib/postgresql`, not `/var/lib/postgresql/data`.
+- The issuer is a browser address (`https://localhost:8443/...`).
+- The JWKS address is Docker-internal (`http://keycloak:8080/...`), because a container cannot reach Caddy through its own `localhost`.
+
+## 7. Start and verify
+
+```bash
+cd infra/local
+docker compose config
 docker compose up --build
-
-Below notes are self understanding you can skip this:
-
-ARG VITE_API_BASE_URL= declares a Docker build-time variable with an empty default value.
-
-This line in your Compose file supplies the value:
-
-frontend:
-
-build:
-
-context: ../../enterprise-knowledge-assistant-frontend
-
-args:
-
-VITE_API_BASE_URL: ""
-
-Docker flow:
-
-compose.yaml build.args
-
-→ Docker ARG VITE_API_BASE_URL
-
-→ Docker ENV VITE_API_BASE_URL
-
-→ npm run build
-
-→ Vite embeds the value into the compiled frontend files
-
-So the effective value is empty:
-
-VITE_API_BASE_URL=""
-
-Your frontend code interprets an empty API base URL as same-origin. The browser calls:
-
-/api/v1/chat/query
-
-instead of:
-
-http://localhost:8080/api/v1/chat/query
-
-Then Caddy receives the request at:
-
-https://localhost:8443/api/v1/chat/query
-
-and proxies it to the backend container:
-
-backend:8080
-
-This is the preferred local-production setup because:
-
-•Browser traffic stays HTTPS.
-
-•No browser CORS configuration is required.
-
-•The backend is not exposed directly to your Mac network.
-
-•You can later use the same pattern with a real domain.
-
-Important: Vite reads VITE_* values during npm run build, not when the Nginx container
-
-starts. To change a frontend variable, rebuild the frontend image:
-
-docker compose up --build frontend
-
-6. Start it
-
-From infra/local:
-
-docker compose up --build
-
-Check:
-
-curl -k https://localhost:8443/actuator/health
-
-Expected:
-
-{"status":"UP"}
-
-Configure Keycloak
-
-Open: https://localhost:8443/auth
-
-1.Log in with the Keycloak bootstrap admin.
-
-2.Create realm: eka
-
-3.Create client: eka-frontend
-
-4.Set client type: public
-
-5.Enable Authorization Code Flow.
-
-6.Enable PKCE with S256.
-
-7. Set valid redirect URI: https://localhost:8443/auth/callback
-
-Set post-logout redirect URI: https://localhost:8443/login
-
-Create a test user and password.
-
-8. Verify manually
-
-1.Open https://localhost:8443
-
-2.Click SSO sign-in.
-
-3.Log in through Keycloak.
-
-4.Confirm browser returns to the app.
-
-5.Upload a non-sensitive PDF.
-
-6.Wait for indexing.
-
-7.Ask a question.
-
-8.Confirm citations display.
-
-9. Stop and reset
-
-Stop containers: docker compose down
-
-Delete local database completely: docker compose down -v
-
-Only use -v when you intentionally want to delete all local uploaded/indexed database data.
-
-# Keycloak Setup Guide for EKA
-
-This guide documents the configuration shown in the supplied screenshots.
-
-## 1. Log in to Keycloak Admin
-
-Use the admin console credentials:
-
-Username: admin
-
-Password: The value of KEYCLOAK_ADMIN_PASSWORD in infra/local/.env
-
-## 2. Create a Realm
-
-Open the realm dropdown in the top-left corner.
-
-Select Create realm.
-
-Set the realm name to eka.
-
-Click Create.
-
-## 3. Create an OIDC Client
-
-Inside the eka realm:
-
-Navigate to Clients → Create client.
-
-Set Client type to OpenID Connect.
-
-Set Client ID to eka-frontend.
-
-Click Next.
-
-Configure client capabilities:
-
-Client authentication: Off
-
-Authorization: Off
-
-Standard flow: On
-
-Direct access grants: Off
-
-Service accounts roles: Off
-
-Click Next.
-
-Configure login settings:
-
-Root URL: https://localhost:8443
-
-Valid redirect URIs: https://localhost:8443/auth/callback
-
-Valid post logout redirect URIs: https://localhost:8443/login
-
-Web origins: https://localhost:8443
-
-Click Save.
-
-## 4. Configure PKCE
-
-Navigate to Clients → eka-frontend → Advanced.
-
-Set Proof Key for Code Exchange Code Challenge Method to S256.
-
-Click Save.
-
-## 5. Create a Test User
-
-Navigate to Users → Add user.
-
-Set:
-
-Username: eka-demo-user
-
-Email verified: On
-
-Enabled: On
-
-Click Create.
-
-Open Credentials.
-
-Click Set password and choose a test password.
-
-Set Temporary to Off.
-
-Save.
-
-## 6. Verify the Realm Discovery URL
-
-Open:
-
+```
+
+`docker compose config` validates variables but may display resolved passwords. Do not share its output.
+
+In another terminal:
+
+```bash
+curl https://localhost:8443/actuator/health
+```
+
+Expected response:
+
+```json
+{"groups":["liveness","readiness"],"status":"UP"}
+```
+
+## 8. Keycloak setup
+
+1. Open `https://localhost:8443/auth/`.
+2. Log in as `admin` with `KEYCLOAK_ADMIN_PASSWORD` from `.env`.
+3. Create realm: `eka`.
+4. In **eka**, select **Clients → Create client**.
+5. Choose **OpenID Connect**; Client ID: `eka-frontend`.
+6. Set:
+   - Client authentication: **Off**
+   - Authorization: **Off**
+   - Standard flow: **On**
+   - Direct access grants: **Off**
+   - Service accounts roles: **Off**
+7. Set login URLs:
+   - Root URL: `https://localhost:8443`
+   - Valid redirect URIs: `https://localhost:8443/auth/callback`
+   - Valid post logout redirect URIs: `https://localhost:8443/login`
+   - Web origins: `https://localhost:8443`
+8. Save. Open **Advanced**, set PKCE challenge method to `S256`, then save.
+9. Create a user under **Users**, set a password under **Credentials**, and turn **Temporary** off.
+
+Verify this URL returns JSON:
+
+```text
 https://localhost:8443/auth/realms/eka/.well-known/openid-configuration
+```
 
-The returned JSON should include an issuer like:
+It must contain:
 
-{
+```json
+{"issuer":"https://localhost:8443/auth/realms/eka"}
+```
 
-"issuer": "https://localhost:8443/auth/realms/eka"}
+Do not configure a client secret. This is a public SPA using Authorization Code Flow with PKCE.
 
-## Notes
+## 9. Create a collection and grant your SSO user access
 
-Do not configure a client secret. This is a browser-based single-page application (SPA) using the Authorization Code Flow with PKCE.
+After a user first signs in, EKA creates them as a `MEMBER` but gives no collection permissions. This is intentional.
 
-These URLs assume Keycloak is exposed locally at https://localhost:8443.
+Copy the UUID displayed as `Signed in as ...` in the app. This is the OIDC subject, not the Keycloak username.
 
-Keep the admin password and test-user password private; do not commit secrets to source control.
+Check existing collections:
+
+```bash
+docker compose exec postgres psql -U eka -d eka -c "SELECT id, name FROM collections;"
+```
+
+If no collection exists:
+
+```bash
+docker compose exec postgres psql -U eka -d eka -c \
+"INSERT INTO collections (name, description)
+ VALUES ('Local Knowledge Base', 'My local EKA documents');"
+```
+
+Grant upload and read access. Replace `<subject-uuid>`:
+
+```bash
+docker compose exec postgres psql -U eka -d eka -c \
+"INSERT INTO collection_grants (subject, collection_id, permission)
+ SELECT '<subject-uuid>', id, 'MANAGE'
+ FROM collections
+ WHERE name = 'Local Knowledge Base';"
+```
+
+Verify:
+
+```bash
+docker compose exec postgres psql -U eka -d eka -c \
+"SELECT c.name, g.permission
+ FROM collection_grants g
+ JOIN collections c ON c.id = g.collection_id
+ WHERE g.subject = '<subject-uuid>';"
+```
+
+Refresh the app or sign in again. `MANAGE` permits uploads and reads; `READ` is read-only.
+
+## Troubleshooting
+
+### Backend shows `Exec format error`
+
+Confirm `platform: linux/arm64`, then:
+
+```bash
+docker compose build --no-cache backend
+docker compose up -d backend
+```
+
+### `/auth/callback` returns 404
+
+Confirm Caddy routes `/auth/callback` to `frontend:80` **before** `/auth/*`, and Nginx includes:
+
+```nginx
+try_files $uri $uri/ /index.html;
+```
+
+Then:
+
+```bash
+docker compose up -d --build frontend
+docker compose restart caddy
+```
+
+### `/api/v1/me` returns `UNAUTHENTICATED` after SSO
+
+Confirm these backend values:
+
+```yaml
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://localhost:8443/auth/realms/eka
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/eka/protocol/openid-connect/certs
+```
+
+Then recreate the backend:
+
+```bash
+docker compose up -d --force-recreate backend
+docker compose logs -f backend
+```
+
+### Browser displays an old HTML response for an API request
+
+Use an incognito/private window, or DevTools → Network → **Disable cache**, then hard reload.
+
+### Reset a disposable local database
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+`-v` permanently deletes local database data, document metadata, and indexes.
+
+## Useful commands
+
+```bash
+docker compose up --build                     # Start/rebuild all services
+docker compose up -d --build                  # Start in background
+docker compose ps                             # Show service status
+docker compose logs -f backend                # Follow backend logs
+docker compose logs -f caddy                  # Follow Caddy logs
+docker compose up -d --force-recreate backend # Apply backend env changes
+docker compose up -d --build frontend         # Rebuild after VITE_* or Nginx changes
+docker compose down                           # Stop, retaining database data
+docker compose down -v                        # Stop and delete local database data
+```
+
+## Why the frontend API base URL is empty
+
+`VITE_API_BASE_URL: ""` means “use the same browser origin.” The request flow is:
+
+```text
+Browser → https://localhost:8443/api/v1/... → Caddy → backend:8080
+```
+
+This keeps browser traffic HTTPS, avoids CORS configuration, hides the backend port from macOS, and is similar to a real domain deployment. Vite embeds `VITE_*` variables at build time, so rebuild the frontend image after changing one.
