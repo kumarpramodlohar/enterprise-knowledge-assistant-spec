@@ -50,9 +50,9 @@ All codes above are implemented in the backend (T04, T09, T11).
 - `DocumentResponse`: `id, collectionId, fileName, contentType, sizeBytes, status, failureReason?, version?, documentType?, tags[], createdAt, updatedAt`. `failureReason` is a stable code (for example `CORRUPT`, `EMPTY`, `TOO_LARGE`, `ENCRYPTED`), never document content.
 - `UploadAcceptedResponse`: `documentId, status, statusUrl`.
 - `DocumentPage`: `items[], page, size, totalItems`.
-- `ChatQueryRequest`: `question` (required, not blank, max 2000 chars), optional `filters {collectionIds[≤50], version, documentType, tags[≤20]}`. Filters only narrow results and never widen access.
+- `ChatQueryRequest`: `question` (required, not blank, max 2000 chars), optional `filters {collectionIds[≤50], version, documentType, tags[≤20]}`, and optional `allowExternalSearch` (boolean, default false). Filters only narrow results and never widen access. External search requires explicit request consent and server enablement.
 - `ChatQueryResponse`: `answer` (null when insufficient evidence), `insufficientEvidence`, `citations[]`, `correlationId`, `timingMs` (end-to-end), `retrievalMs` (embedding and vector retrieval).
-- `Citation`: `documentId, fileName, chunkId, pageNumber?, section?, snippet`, built from trusted stored metadata only.
+- `Citation`: includes `sourceType` (`INTERNAL` or `EXTERNAL`). Internal citations include `documentId, fileName, chunkId, pageNumber?, section?, snippet` built from trusted stored metadata. External citations include `title, url, snippet`; `url` must use HTTPS and external citations do not contain internal document identifiers.
 - `Me.manageableCollectionIds`: collection IDs for which the authenticated identity has server-side `MANAGE` permission. This is a UI affordance only; every write is independently authorized by the API.
 
 ## Open items

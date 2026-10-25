@@ -15,7 +15,7 @@ If a decision changes, update this file first, then the affected spec or task.
 | DEC-007 | RAG tuning values                    | Starting values below                                       | Approved                    |
 | DEC-008 | MVP scope                            | Optional features deferred                                  | Approved                    |
 | DEC-009 | Document extraction libraries        | Apache PDFBox (PDF), Apache POI (DOCX), plain read (TXT/MD) | Proposed (pending approval) |
-| DEC-010 | Corrective RAG (CRAG) and web search | Post-MVP; decide after baseline evaluation                  | Proposed (pending approval) |
+| DEC-010 | Corrective RAG (CRAG) and web search | P1–P4 approved; external search has dual opt-in and defaults off | Approved |
 
 ---
 
@@ -152,19 +152,20 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 
 ## DEC-010: Corrective RAG (CRAG) and web search
 
-**Status:** Proposed. Not approved; requires explicit human approval after the MVP baseline evaluation. Decide per phase.
+**Status:** P1–P4 approved by product owner on 2026-10-22. Owner authorized proceeding despite incomplete MVP baseline evaluation; T18/T19 remain blocked.
 
 **Baseline (MVP):** retrieve, apply the similarity evidence threshold (DEC-007), then generate or return insufficient evidence. No per-document evaluator, refinement, query rewrite, or web search.
 
-**Proposal (phased, each separately approvable):**
+**Approved phases and defaults:**
 
-- P1 retrieval evaluator with Correct / Ambiguous / Incorrect verdicts.
-- P2 knowledge refinement (strip, filter, recompose).
-- P3 query rewrite with internal re-retrieval in the same authorization scope.
-- P4 external web search.
+- P1 prompted evaluator using configured chat model; ambiguous results abstain.
+- P2 refine correct passages by selecting validated source strips.
+- P3 allow at most one query rewrite and re-retrieve with the same authorization scope and metadata filters.
+- CRAG disabled by default; evaluate up to five passages; 60-second CRAG-stage timeout; stage failures fall back to MVP behavior.
+- Do not add corrective-action API/UI messaging.
 
-**Constraints:** P4 conflicts with the current out-of-scope rule on public web access and would send derived user queries to an external provider. It needs a scope change, redaction and data-sharing approval, and a distinct external citation type. P1–P3 stay internal.
+**P4 web search:** Approved as a bounded Tavily Search API fallback only after internal corrective retrieval fails. Requires both `EKA_WEB_SEARCH_ENABLED=true` with a server-side API key and request `allowExternalSearch=true` (frontend unchecked by default). Sends only the user's question and fixed search options; no passages, filenames, collection/user identifiers, or conversation history. Do not log or persist question/provider bodies. Search result snippets are untrusted; no raw-page extraction/provider answer. Citations are typed INTERNAL/EXTERNAL; external sources expose validated HTTPS URL, title, and snippet. P4 does not run on ambiguous or initial no-hit branches. Search failures abstain. Existing CRAG remains disabled by default.
 
-**Open decisions:** evaluator type, handling of Ambiguous, web search allowed or not, latency/cost budget, thresholds, user visibility. See [specs/005-corrective-rag](../../specs/005-corrective-rag/spec.md) §9.
+**Baseline limitation:** Existing 30-case reports are not human reviewed and show zero Recall@5 at threshold 0.70. This is not representative quality evidence and does not complete T18/T19. See [specs/005-corrective-rag](../../specs/005-corrective-rag/spec.md).
 
 **Affects:** EKA-15, EKA-17, EKA-19 (future)

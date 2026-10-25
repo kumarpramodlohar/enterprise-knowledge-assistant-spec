@@ -47,7 +47,7 @@ This document describes intended behavior, not implemented functionality.
 
 Some source material proposes or describes these deferred capabilities. This specification follows DEC-008.
 
-Corrective RAG (retrieval evaluator, refinement, query rewrite, web search) is also not part of the MVP; the proposed post-MVP path is tracked in [specs/005-corrective-rag](../005-corrective-rag/spec.md) and DEC-010 (proposed).
+Corrective RAG is not part of the MVP baseline. Phases P1–P4 are approved behind disabled-by-default configuration; external web search also requires per-question user consent. See [specs/005-corrective-rag](../005-corrective-rag/spec.md) and DEC-010.
 
 ### Out of scope
 

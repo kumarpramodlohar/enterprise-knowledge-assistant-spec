@@ -2,18 +2,18 @@
 
 **Specification:** [spec.md](./spec.md) · **Plan:** [plan.md](./plan.md)
 
-> All tasks are blocked until the MVP baseline evaluation is complete and DEC-010 is approved per phase. No task has started.
+> Owner approved P1–P4 on 2026-10-22 despite the incomplete baseline evaluation. T18/T19 remain blocked. P4 defaults off and requires deployment plus per-request opt-in.
 
 | ID  | Task                                                                              | Repository                         | Phase | Depends on           | Status                                |
 | --- | --------------------------------------------------------------------------------- | ---------------------------------- | ----- | -------------------- | ------------------------------------- |
-| C01 | Review MVP baseline evaluation and record retrieval gaps                          | Specification                      | Gate  | 001 T18, T19         | Blocked (MVP evaluation not complete) |
-| C02 | Owner decision on DEC-010 and OD-1–OD-8; update decision status                   | Specification                      | Gate  | C01                  | Blocked                               |
-| C03 | Update spec, plan, api-contract for approved phases                               | Specification                      | Gate  | C02                  | Blocked                               |
-| C04 | `crag.*` configuration, default off; baseline parity test                         | Backend                            | P1    | C03                  | Blocked                               |
-| C05 | `RetrievalEvaluator` and `ActionSelector` with unit tests                         | Backend                            | P1    | C04                  | Blocked                               |
-| C06 | Add CRAG mode to evaluation runner; compare to baseline                           | Backend / QA                       | P1    | C05                  | Blocked                               |
-| C07 | `KnowledgeRefiner` with citation-preserving tests                                 | Backend                            | P2    | C06                  | Blocked                               |
-| C08 | `QueryRewriter` and scoped re-retrieval; adversarial scope tests                  | Backend                            | P3    | C06                  | Blocked                               |
-| C09 | Frontend: show corrective action if OD-7 approved                                 | Frontend                           | P3    | C03, C08             | Blocked                               |
-| C10 | Web search: separate approval, privacy/redaction design, `EXTERNAL` citation type | Specification / Backend / Frontend | P4    | OD-4 approved        | Blocked (not planned)                 |
-| C11 | Verification summary and record updates                                           | Specification                      | All   | Approved phases done | Blocked                               |
+| C01 | Review baseline reports and record their limitations                              | Specification                      | Gate  | 001 T18, T19         | Done — 30 cases; no human review; owner authorized proceeding |
+| C02 | Approve phases and record defaults in DEC-010                                      | Specification                      | Gate  | C01                  | Done — P1–P4; P4 dual opt-in           |
+| C03 | Update spec, plan, and API contract for approved phases                           | Specification                      | Gate  | C02                  | Done — request and citation contract updated |
+| C04 | Add `crag.*` configuration, disabled by default, and baseline parity coverage      | Backend                            | P1    | C03                  | Done                                  |
+| C05 | Implement `RetrievalEvaluator` and `ActionSelector` with tests                    | Backend                            | P1    | C04                  | Done                                  |
+| C06 | Add CRAG mode to evaluation runner and comparison reporting                       | Backend / QA                       | P1    | C05                  | Done — paired runner; representative live comparison pending reviewed corpus |
+| C07 | Implement `KnowledgeRefiner` with citation-preserving tests                       | Backend                            | P2    | C06                  | Done                                  |
+| C08 | Implement `QueryRewriter` and same-scope retrieval with adversarial tests         | Backend                            | P3    | C06                  | Done                                  |
+| C09 | Frontend corrective-action messaging                                              | Frontend                           | P3    | —                    | Not approved; out of scope            |
+| C10 | External web search and `EXTERNAL` citations                                      | Specification / Backend / Frontend | P4    | C03                  | Done — dual opt-in, bounded Tavily search, typed citations |
+| C11 | Verification summary and record updates                                           | Specification                      | All   | Approved phases done | Done — backend focused tests and frontend build/tests pass; live provider call not run |
