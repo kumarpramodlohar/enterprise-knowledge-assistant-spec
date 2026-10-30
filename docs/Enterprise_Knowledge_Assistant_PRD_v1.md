@@ -3,7 +3,7 @@
 ## Product Requirements Document (PRD)
 
 **Document ID:** EKA-PRD-001  
-**Version / status:** 1.0 / Draft for review  
+**Version / status:** 1.1 / Aligned to approved decisions and implemented-flow records (2026-10-30)
 **Prepared date:** 2026-10-09  
 **Product:** Enterprise Knowledge Assistant (EKA)  
 **Canonical requirements source:** [`Enterprise_Knowledge_Assistant_Requirements_v1.md`](Enterprise_Knowledge_Assistant_Requirements_v1.md)  
@@ -86,6 +86,10 @@ A person who supports the running application and diagnoses service health witho
 5. If there is no adequate evidence, EKA clearly says so rather than inventing a factual answer.
 6. The user can inspect the cited source information.
 
+### Optional corrective path
+
+The default answer flow remains internal-only. When corrective RAG is enabled, EKA may evaluate and refine internal evidence and make one same-scope retrieval retry. Public-web search is a bounded exception: it requires an operator-enabled Tavily integration and an unchecked per-question consent control. It occurs only after an unsuccessful internal corrective retry. Web results are visibly labelled as external sources and never contain internal document identifiers.
+
 ### Core user journey: make knowledge searchable
 
 1. An authorized Knowledge Manager uploads a supported PDF, DOCX, TXT, or Markdown document within configured limits.
@@ -104,6 +108,7 @@ A person who supports the running application and diagnoses service health witho
 - Safe, idempotent retries; re-indexing without duplicate active chunks; authorized document listing, inspection, and deletion.
 - Natural-language question submission and semantic retrieval with configurable top-K and server-enforced access and metadata filters.
 - Grounded answers with valid citations to authorized indexed sources, plus an insufficient-evidence response.
+- Optional disabled-by-default corrective RAG and dual-opt-in external search as defined by DEC-010; external citations are typed and visibly distinct.
 - Context and provider timeouts with bounded retries; safe errors, health checks, structured logs, correlation IDs, and relevant usage/latency metrics where available.
 - A repeatable, versioned evaluation process that records dataset/configuration details and retrieval and answer-quality measures.
 - Documented local development using Docker-based setup and automated tests for required behavior.
@@ -183,11 +188,9 @@ Report results alongside dataset version and model/retrieval configuration. The 
 ### Assumptions and decisions to resolve
 
 - Initial deployment is a single environment for a portfolio/MVP project.
-- Preferred implementation stack: Java 21, Spring Boot 3.x, Spring AI, React + TypeScript, and PostgreSQL with pgvector.
-- Select an LLM and embedding provider before implementation; keep provider settings externalized.
-- PostgreSQL full-text search is the proposed first keyword-search option; Kafka is optional, and a simpler background mechanism is acceptable for the first thin slice.
-- Decided (see [`implementation/product-decisions.md`](implementation/product-decisions.md)): local dev auth plus OIDC; Ollama and OpenAI independently selectable for chat and embeddings in local/development, with Ollama defaults locally and OpenAI defaults when deployed; 10 MB upload limit; duplicates rejected; original files not stored; soft delete with a 7-day purge; hybrid retrieval, reranking, feedback, conversation history and Kafka deferred.
-- Still open: exact model names. OIDC provider: Keycloak (DEC-001 update, 2026-10-16).
+- Implemented baseline: Java 21, Spring Boot 4.1.1, Spring AI 2.0.1, React + TypeScript, and PostgreSQL with pgvector.
+- Decided (see [`implementation/product-decisions.md`](implementation/product-decisions.md)): Keycloak OIDC for deployed authentication; local development authentication; independently selectable Ollama/OpenAI chat and embedding providers; 10 MB upload limit; duplicate rejection; no original-file storage; and seven-day soft-delete purge.
+- Hybrid retrieval, reranking, feedback, conversation history, and Kafka remain deferred. CRAG P1–P4 are approved behind disabled-by-default configuration; external search also requires explicit per-question consent.
 - Benchmark performance on a named environment before committing to latency targets.
 
 ## 11. Release Readiness

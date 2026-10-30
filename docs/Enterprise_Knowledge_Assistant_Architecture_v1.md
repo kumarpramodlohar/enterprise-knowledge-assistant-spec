@@ -3,14 +3,14 @@
 ## Architecture Document
 
 **Document ID:** EKA-ARCH-001  
-**Version / status:** 1.0 / Draft for review  
+**Version / status:** 1.1 / Architecture baseline aligned to implemented-flow records (2026-10-30)
 **Prepared date:** 2026-10-09  
 **Target release:** MVP v1  
 **Product requirements:** [`Enterprise_Knowledge_Assistant_PRD_v1.md`](Enterprise_Knowledge_Assistant_PRD_v1.md)  
 **Canonical requirements:** [`Enterprise_Knowledge_Assistant_Requirements_v1.md`](Enterprise_Knowledge_Assistant_Requirements_v1.md)  
 **Decisions:** [`implementation/product-decisions.md`](implementation/product-decisions.md)
 
-> This document describes a proposed target architecture for the MVP. It is not a claim that the components are already implemented. The canonical requirements document is authoritative if details conflict.
+> This document describes the approved architecture and implemented baseline as of 2026-10-30. Feature specifications and approved decisions remain authoritative for detailed behavior. Representative evaluation, live Keycloak login verification, and release readiness are not complete.
 
 ## 1. Purpose and Architectural Goals
 
@@ -23,11 +23,9 @@ The design prioritizes server-side access control, traceable citations, reliable
 
 ## 2. Current Repository State
 
-The repository currently contains a Spring Boot application entry point, a Gradle build using Java 21, Spring Boot 4.1.1, Spring AI 2.0.1, web MVC, several AI model starters, and vector-store starters. The current `application.properties` only names the application.
+The backend implements Spring Boot 4.1.1/Spring AI 2.0.1 APIs, Spring Security local and Keycloak OIDC profiles, Flyway migrations, PostgreSQL/pgvector persistence, extraction, durable ingestion/recovery, authorization-scoped retrieval, chat, CRAG, Tavily integration, and retrieval diagnostics. The frontend implements the login/callback flow, document management, assistant, typed internal/external citations, and the explicit external-search consent control.
 
-The inspected repository does not yet contain implemented API/controller, ingestion, retrieval, persistence, security, database migration, Docker Compose, or React application components. The architecture below is the target design, not a description of completed application behavior.
-
-Before implementation, review the build dependency set against the chosen provider and the intended PostgreSQL/pgvector-only MVP path. Keep only the selected provider(s) and vector-store integration needed for a deployable configuration; Pinecone and multiple simultaneous model-provider starters are not required by the target MVP.
+The implemented baseline is not a release claim. T18/T19 remain blocked by representative labelled evaluation and human-review evidence, and a live Keycloak end-to-end login is still pending. The backend also has uncommitted prompt-only changes; this document records only the committed/feature-recorded behavior.
 
 ## 3. System Context and Containers
 
@@ -53,7 +51,7 @@ flowchart LR
 
 For a local MVP, the React client, Spring Boot API, and PostgreSQL/pgvector can run as separate Docker Compose services. LLM and embedding endpoints are external services or a locally configured Ollama service. Credentials are supplied through environment-specific secret configuration, never committed to source.
 
-The identity integration is an open decision. If an external OIDC provider is selected, the SPA obtains an access token and Spring Security validates it. If a local-development identity mode is provided, it must be isolated from production configuration and must not weaken authorization in normal deployments.
+Keycloak is the approved OIDC provider. The SPA uses Authorization Code + PKCE and the backend validates bearer tokens in its OIDC profile. Local HTTP Basic authentication is isolated to the `local` profile.
 
 ## 4. Backend Component Architecture
 
@@ -175,14 +173,19 @@ sequenceDiagram
     participant LLM as Chat model provider
 
     User->>UI: Ask question + optional filters
-    UI->>API: POST /api/v1/chat/query
+    UI->>API: POST /api/v1/chat/query (+ optional allowExternalSearch)
     API->>Auth: Authenticate and resolve permitted scope
     Auth-->>API: Principal + authorized collection constraints
     API->>Ret: Query + server-derived scope + validated filters
     Ret->>DB: Similarity search with mandatory scope filter
     DB-->>Ret: Bounded authorized candidate chunks
     Ret-->>API: Ranked chunks + real source metadata
-    API->>API: Check evidence threshold and context budget
+    API->>API: CRAG disabled: check threshold and context budget
+    opt CRAG enabled
+        API->>API: Evaluate up to five authorized passages; refine correct evidence
+        API->>Ret: On incorrect only, rewrite once and retrieve with identical authorized scope
+        API->>API: External search is eligible only after incorrect retry and both opt-ins
+    end
     alt Evidence insufficient
         API-->>UI: Explicit insufficient-evidence result
     else Evidence sufficient
@@ -216,7 +219,6 @@ The API is versioned under `/api/v1`. Final schemas, pagination, rate limits, id
 | `DELETE /api/v1/documents/{id}` | Authorize and initiate/complete deletion of document content and derived index data. |
 | `POST /api/v1/documents/{id}/reindex` | Request an authorized, idempotent re-index job. |
 | `POST /api/v1/chat/query` | Submit a question and optional collection/metadata filters; return answer or explicit insufficient evidence, citations, and correlation ID. |
-| `POST /api/v1/feedback` | Optional scoped feedback submission. |
 | `GET /actuator/health` | Expose only deliberately safe health information; restrict detailed component status to operators. |
 
 Use consistent problem responses that distinguish invalid input, unauthenticated, forbidden/not-found according to disclosure policy, rate-limited, provider failure, and internal failure. Do not return raw provider errors, prompts, secrets, or unauthorized resource existence.
@@ -276,10 +278,10 @@ Compose should provide reproducible local application/database startup and healt
 | Spring AI | Provider abstraction for chat and embedding models; vector-store integration where appropriate; optional RAG advisor utilities. Authorization remains application-enforced. |
 | PostgreSQL | Durable application metadata, permissions/scope, job state, audit records, and migrations. |
 | pgvector | Vector storage and similarity retrieval linked to application-owned document/chunk metadata. |
-| React + TypeScript | Browser UI for assistant, citations, document operations, status, and user feedback; not a security boundary. |
+| React + TypeScript | Browser UI for assistant, typed citations, document operations, status, and external-search consent; not a security boundary. |
 | Docker Compose | Local reproducible development dependencies and service wiring. |
 
-The inspected Gradle build currently includes Spring AI starters for Anthropic, Ollama, OpenAI, pgvector, and Pinecone. The target architecture supports provider substitution but expects a deliberately configured active provider/model for a given environment and PostgreSQL/pgvector as the MVP vector store. Provider selection and dependency cleanup are implementation tasks.
+The backend uses independently selected Ollama/OpenAI chat and embedding providers with compatible isolated vector tables. Anthropic and Pinecone are not part of the delivered dependency baseline. See DEC-002 and specification 008 for selection rules.
 
 ## 14. Key Architecture Decisions and Open Questions
 

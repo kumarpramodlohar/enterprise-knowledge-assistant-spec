@@ -1,12 +1,12 @@
 # Enterprise Knowledge Assistant MVP Implementation Plan
 
 **Document ID:** EKA-PLAN-001
-**Version / status:** 0.1 / Draft for review
+**Version / status:** 1.0 / Historical implementation plan; aligned status note added 2026-10-30
 **Prepared date:** 2026-10-10
 **Target release:** MVP v1
 **Specification:** [spec.md](./spec.md)
 
-> This plan describes a proposed implementation approach for the MVP specification. It does not claim that planned components are implemented or approve unresolved product or architecture decisions.
+> This plan records the approach used for the MVP baseline. Completion status is maintained in `tasks.md`; feature specifications 004–010 record later delivered behavior. It does not approve unresolved product or architecture decisions.
 
 ## 1. Purpose and Scope
 
@@ -19,8 +19,8 @@ The specification and approved decisions define behavior. This plan uses the arc
 | Repository | Planned responsibility | Inspected state relevant to this plan |
 |---|---|---|
 | Specification | Requirements, decisions, architecture, plans, tasks, and status. | Holds the source documents and this plan. |
-| Backend | Spring Boot API, authentication/authorization, persistence, ingestion, retrieval, and RAG orchestration. | Contains a Java 21 Gradle starter and `application.properties`; no API, security, persistence, migrations, or Compose setup was found. `build.gradle` currently uses Spring Boot 4.1.1 and Spring AI 2.0.1 with Anthropic, Ollama, OpenAI, pgvector, and Pinecone starters. |
-| Frontend | React/TypeScript UI, authentication integration, API client, document flows, assistant, and citations. | Contains a Vite/React application shell with placeholder assistant and document pages; product functionality is not yet implemented. |
+| Backend | Spring Boot API, authentication/authorization, persistence, ingestion, retrieval, and RAG orchestration. | Implemented baseline: Java 21, Spring Boot 4.1.1/Spring AI 2.0.1, Flyway, pgvector, local/OIDC security, document lifecycle, chat, CRAG, web-search adapter, and diagnostics. Live provider verification remains incomplete. |
+| Frontend | React/TypeScript UI, authentication integration, API client, document flows, assistant, and citations. | Implemented login/callback, document-management, assistant, typed citations, and external-search consent. Visual Figma review and live Keycloak verification remain open. |
 
 The application repositories are separate. Keep specification changes here and implement application behavior in the corresponding repository. Confirm the owner/location of any cross-repository Compose setup before adding it.
 
@@ -149,7 +149,7 @@ Do not treat the proposed answer-quality, citation, or latency values in the sou
 
 | Item | Impact / handling |
 |---|---|
-| Spring Boot version mismatch | The intended stack in README describes Spring Boot 3.x, while the existing backend build uses 4.1.1. Confirm the supported version and Spring AI compatibility before modifying dependencies or writing version-specific setup instructions. |
+| Spring Boot / Spring AI compatibility | Resolved in T01: Java 21, Spring Boot 4.1.1, and Spring AI 2.0.1 are the approved baseline. Retain compatibility checks when upgrading. |
 | Provider/model and vector dimensions | DEC-002 supports independent Ollama/OpenAI provider selection for chat and embeddings; exact models remain configurable. Choose compatible embedding dimensions and keep indexes isolated; re-index when changing embedding model/provider. |
 | Local PostgreSQL/pgvector image and Compose ownership | Choose compatible versions and identify the repository owning shared local orchestration before adding configuration. |
 | Identity provider and local users | OIDC product remains open. Keep local mode isolated and test backend authorization independently of UI behavior. |

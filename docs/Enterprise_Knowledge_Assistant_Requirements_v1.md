@@ -3,7 +3,7 @@
 ## Software Requirements Specification (SRS)
 
 **Document ID:** EKA-SRS-001\
-**Version / status:** 1.0 / Draft for review\
+**Version / status:** 1.1 / Aligned to approved decisions and implemented-flow records (2026-10-30)\
 **Prepared date:** 2026-10-09\
 **Audience:** Product owner, backend/frontend engineering, AI
 engineering, QA, security, operations\
@@ -12,9 +12,9 @@ engineering, QA, security, operations\
 **Normative language:** "Shall" means mandatory; "Should" means
 recommended; "May" means optional.
 
-> **Important note:** This is a proposed baseline for a portfolio
-> project, not an approved business specification. Confirm assumptions
-> and targets before treating them as commitments.
+> **Important note:** This is the aligned working baseline for the
+> portfolio project. Approved decisions in `implementation/product-decisions.md`
+> take precedence; proposed targets remain non-commitments until evaluated.
 
 ------------------------------------------------------------------------
 
@@ -29,9 +29,10 @@ include citations to the supporting documents and must communicate when
 available evidence is insufficient.
 
 The project is intended to demonstrate production-minded AI engineering:
-ingestion pipelines, chunking and embeddings, vector and keyword
-retrieval, metadata filtering, optional reranking, access control,
-evaluation, observability and cost awareness.
+ingestion pipelines, chunking and embeddings, authorization-scoped vector
+retrieval, corrective retrieval behind configuration, access control,
+evaluation, observability and cost awareness. Hybrid retrieval and reranking
+remain deferred by DEC-008.
 
 ## 2. Goals and Success Measures
 
@@ -81,10 +82,11 @@ evaluation, observability and cost awareness.
     citations.
 -   Semantic similarity search with configurable top-K and metadata
     filters.
--   Hybrid retrieval (vector + keyword) and reranking as configurable
-    retrieval stages.
 -   Document listing, status viewing, deletion and re-indexing.
--   Basic feedback (helpful / not helpful) and an evaluation dataset.
+-   Repeatable evaluation and authorized retrieval diagnostics.
+-   Corrective RAG behind disabled-by-default configuration: bounded passage
+    evaluation, refinement, one same-scope rewrite/retrieval, and the
+    approved dual-opt-in external-search exception in DEC-010.
 -   Docker-based local development and automated tests.
 
 ### 3.2 Out of scope for MVP
@@ -98,6 +100,8 @@ evaluation, observability and cost awareness.
     for high-impact decisions.
 -   Complex workflow approvals, billing and multi-region disaster
     recovery.
+-   Hybrid retrieval, reranking, answer feedback, conversation history, and
+    broker-based ingestion are deferred by DEC-008.
 
 ## 4. Users and Roles
 
@@ -115,8 +119,7 @@ evaluation, observability and cost awareness.
 
   End User                            Search and ask questions against
                                       collections they are authorized to
-                                      access; view citations and submit
-                                      feedback.
+                                      access; view citations.
 
   Operator / Developer                View service health and redacted
                                       diagnostics; no implicit permission
@@ -128,11 +131,11 @@ evaluation, observability and cost awareness.
 
 -   Initial deployment is a single environment for a portfolio/MVP
     project.
--   Java 21, Spring Boot 3.x, Spring AI, React + TypeScript and
+-   Java 21, Spring Boot 4.1.1, Spring AI 2.0.1, React + TypeScript and
     PostgreSQL with pgvector are the preferred implementation stack.
--   An LLM and embedding model provider will be selected before
-    implementation; provider-specific configuration must remain
-    externalized.
+-   Keycloak is the OIDC provider for deployed authentication. Ollama and
+    OpenAI are independently selectable for chat and embeddings; provider
+    configuration remains externalized.
 -   Kafka may be used for asynchronous ingestion, but a simpler queue or
     background executor is acceptable for the first thin slice.
 -   The system must not assume that similarity scores are calibrated
@@ -159,9 +162,11 @@ records (if enabled), feedback and operational status.
 
 **External dependencies:** identity provider or Spring Security
 authentication, LLM provider, embedding provider, PostgreSQL/pgvector,
-and optional Kafka/Redis/observability backend.
+and an observability backend where configured.
 
 ## 7. Functional Requirements
+
+FR-012 (hybrid retrieval), FR-013 (reranking), and FR-019 (feedback) remain retained historical requirements but are deferred by DEC-008. They are not current MVP behavior or API commitments.
 
   -------------------------------------------------------------------------------------------------------------
   ID          Requirement      Statement               Priority    Acceptance criteria   Verification
@@ -569,9 +574,6 @@ that outdated documents do not dominate the answer.
                                           optional filters and    
                                           collection scope        
 
-  `POST /api/v1/feedback`                 Submit answer feedback  Authenticated user;
-                                                                  answer scope checked
-
   `GET /actuator/health`                  Health status           Public only if
                                                                   deliberately safe;
                                                                   otherwise
@@ -586,11 +588,18 @@ semantics must be finalized during technical design.
 -   **Baseline:** semantic vector retrieval with configurable top-K.
 -   **Metadata:** enforce collection and access-control filters before
     any retrieved text is placed in an LLM prompt.
--   **Hybrid search:** combine vector results with PostgreSQL
-    full-text/keyword results; evaluate reciprocal rank fusion (RRF) or
-    another explicit fusion strategy.
--   **Reranking:** optionally rerank an initial candidate set, then pass
-    only the final selected chunks to the context builder.
+-   **Corrective RAG:** when `crag.enabled=true`, evaluate at most five
+    authorized passages. Correct evidence is refined from validated source
+    strips; incorrect evidence may receive one same-scope internal rewrite
+    and retrieval; ambiguous evidence abstains. Stage failures fall back to
+    the baseline path.
+-   **External search:** only after an unsuccessful corrective internal
+    retrieval, and only when deployment enablement plus
+    `allowExternalSearch=true` are both present, one Tavily request may use
+    the user question. Results are untrusted; citations are typed
+    `EXTERNAL` with validated HTTPS URL, title, and snippet. Initial no-hit
+    and ambiguous branches do not cause external egress.
+-   **Hybrid search and reranking:** deferred by DEC-008.
 -   **Context budget:** cap the number of chunks and total context
     tokens; prioritize relevant and non-duplicative passages.
 -   **Citations:** preserve document ID, title, chunk ID and
@@ -766,28 +775,20 @@ documented data-retention policy.
   Vector store            PostgreSQL + pgvector   Engineering ---
                           for the first release.  Proposed
 
-  Keyword retrieval       PostgreSQL full-text    Engineering ---
-                          search for the first    Proposed
-                          hybrid implementation.  
+  Keyword retrieval       Deferred by DEC-008.    Engineering ---
+                                                  Deferred
 
-  Reranker                Add only after a        AI engineering --- Open
-                          baseline proves         
-                          retrieval gaps; keep it 
-                          optional.               
+  Reranker                Deferred by DEC-008.    AI engineering --- Deferred
 
-  Authentication          Spring Security         Security/engineering
-                          OAuth2/OIDC or a        --- Open
-                          clearly isolated local  
-                          development mode.       
+  Authentication          Spring Security local   Security/engineering
+                          development mode and    --- Approved
+                          Keycloak OIDC.
 
-  File size and retention Set explicit upload     Product/security ---
-                          size, original-file     Open
-                          retention and deletion  
-                          policy.                 
+  File size and retention 10 MiB, no original     Product/security ---
+                          file storage, soft      Approved
+                          delete and 7-day purge.
 
-  Conversation storage    Disabled or minimal by  Product/security ---
-                          default until retention Open
-                          and privacy             
+  Conversation storage    Deferred by DEC-008.    Product/security --- Deferred
                           requirements are        
                           agreed.                 
 

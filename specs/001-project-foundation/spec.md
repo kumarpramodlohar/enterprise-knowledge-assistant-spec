@@ -1,12 +1,12 @@
 # Enterprise Knowledge Assistant MVP Specification
 
 **Document ID:** EKA-SPEC-001
-**Version / status:** 0.1 / Draft for review
+**Version / status:** 1.0 / Approved baseline behavior; implementation delivered for T01–T17 and T20, release verification remains blocked
 **Prepared date:** 2026-10-10
 **Target release:** MVP v1
 **Scope:** End-to-end knowledge ingestion, retrieval, and answer experience
 
-> This specification consolidates product behavior from the source documents below. Those documents are drafts, so this specification is also a draft and does not itself approve requirements or decisions. The canonical requirements document is authoritative where source documents conflict. Approved decisions in `docs/implementation/product-decisions.md` take precedence over older proposals.
+> This specification consolidates the approved MVP baseline. Detailed feature behavior and implementation status are maintained in the linked feature specifications and task records. Approved decisions in `docs/implementation/product-decisions.md` take precedence over older proposals.
 
 ## 1. Source Documents
 
@@ -19,7 +19,7 @@
 
 Users need to find trustworthy answers in technical documents without manually searching through files. Knowledge managers need to add documents and understand whether they are searchable. The system shall retrieve only content the current user is authorized to access, provide answers grounded in that evidence with verifiable citations, and clearly report when evidence is insufficient.
 
-This document describes intended behavior, not implemented functionality.
+This document defines approved behavior. T01–T17 and T20 are delivered; T18/T19 remain blocked by representative evaluation and release-readiness evidence.
 
 ## 3. Users
 

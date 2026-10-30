@@ -1,7 +1,7 @@
 # Enterprise Knowledge Assistant MVP Tasks
 
 **Document ID:** EKA-TASKS-001
-**Version / status:** 0.1 / Draft for review
+**Version / status:** 1.0 / T01–T17 and T20 delivered; T18/T19 remain blocked
 **Prepared date:** 2026-10-10
 **Target release:** MVP v1
 **Specification:** [spec.md](./spec.md)
@@ -51,7 +51,7 @@
 - **Depends on:** None
 - **Target areas:** `docs/implementation/product-decisions.md`, `docs/Enterprise_Knowledge_Assistant_Architecture_v1.md`, `specs/001-project-foundation/plan.md`
 - **Work:**
-  - Confirm Spring Boot and Spring AI versions that are compatible with Java 21 and the selected starters. The intended stack says Spring Boot 3.x; the inspected backend currently uses 4.1.1.
+  - Historical planning check, resolved in T01: confirm Spring Boot and Spring AI compatibility with Java 21 and selected starters. The approved baseline is Spring Boot 4.1.1 and Spring AI 2.0.1.
   - Confirm supported PostgreSQL and pgvector versions, migration approach, and vector table strategy for distinct embedding dimensions.
   - Confirm which repository owns local Compose orchestration and whether it runs PostgreSQL alone or the application services too.
   - Identify unresolved API, identity-provider, and model-name choices that block implementation. Record proposed choices as proposals and obtain human approval where required; do not change approved decisions without authorization.
@@ -99,7 +99,7 @@
   - Add safe, consistent error responses and request correlation IDs without disclosing protected resource content.
 - **Completion criteria:** Protected endpoints require authentication; permissions are resolved and checked server-side; local auth cannot be enabled accidentally in deployed configuration.
 - **Tests:** Unauthenticated requests return 401; unauthorized operations are denied without content leakage; local profile isolation and correlation/error behavior are covered.
-- **Status:** Done — Spring Security: HTTP Basic restricted to the `local` profile, OIDC resource server otherwise; `ProfileGuard` blocks `local`+`deployed` together. Roles/grants in Flyway V4 (`app_users`, `collection_grants`) resolved by `AccessService` (read, manage, readable collections, citation document check; denials return 404). Error envelope, `X-Correlation-Id` filter, `GET /api/v1/me`. 16 tests cover 401, denial without leakage, local isolation and correlation. Limitation: OIDC subject-to-user provisioning and a Keycloak realm are not yet set up, so the deployed path is verified only for rejecting unauthenticated requests; no real token flow was tested.
+- **Status:** Done — Spring Security: HTTP Basic restricted to the `local` profile, OIDC resource server otherwise; `ProfileGuard` blocks `local`+`deployed` together. Roles/grants in Flyway V4 (`app_users`, `collection_grants`) resolved by `AccessService` (read, manage, readable collections, citation document check; denials return 404). Error envelope, `X-Correlation-Id` filter, `GET /api/v1/me`. The original 16-test verification covered 401, denial without leakage, local isolation and correlation. Superseded by T20 and specification 004: first OIDC login provisions a `MEMBER` with no grants. A real Keycloak login remains unverified (004 K07).
 
 ### T05 — Define and verify API contracts
 
@@ -113,7 +113,7 @@
   - Document the contract in the canonical location and align backend and frontend types.
 - **Completion criteria:** Each required endpoint has a documented contract and matching client/server types; open decisions are explicit and approved as needed.
 - **Tests:** Contract/API tests cover valid requests, validation failures, status/error mapping, and authorization outcomes.
-- **Status:** Done — contract in [api-contract.md](./api-contract.md); backend DTOs in `org.enterpriseknowledgeassitance.api` and frontend `src/api/types.ts` and `client.ts` aligned. `ApiContractTest` (validation, paging bounds, 400 mapping, auth) and `client.test.ts` pass, plus frontend typecheck, lint and build. Limitation: upload/list/detail/reindex/delete/chat endpoints are not implemented yet (T09, T11, T16), so the contract is not yet verified end to end. Values for paging (20/100), question length (2000) and metadata limits are proposed and awaiting approval.
+- **Status:** Done — contract in [api-contract.md](./api-contract.md); backend DTOs in `org.enterpriseknowledgeassitance.api` and frontend `src/api/types.ts` and `client.ts` aligned. `ApiContractTest` (validation, paging bounds, 400 mapping, auth) and `client.test.ts` passed at the time of completion, plus frontend typecheck, lint and build. Superseded by T09, T11, T16, specification 005, and specification 007: document and chat endpoints are implemented; paging (20/100), question length (2000), upload-limit errors, `allowExternalSearch`, and typed citations are recorded in the current contract.
 
 ### T06 — Implement supported document extraction
 

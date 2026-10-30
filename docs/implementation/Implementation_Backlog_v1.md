@@ -3,7 +3,7 @@
 ## Ordered Implementation Backlog
 
 **Document ID:** EKA-IB-001  
-**Version / status:** 1.0 / Draft for planning  
+**Version / status:** 1.1 / Historical planning backlog; status routing updated 2026-10-30
 **Prepared date:** 2026-10-09  
 **Target release:** MVP v1  
 **Feature specifications:** [`../Enterprise_Knowledge_Assistant_Feature_Specifications_v1.md`](../Enterprise_Knowledge_Assistant_Feature_Specifications_v1.md)  
@@ -11,7 +11,7 @@
 **Product requirements:** [`../Enterprise_Knowledge_Assistant_PRD_v1.md`](../Enterprise_Knowledge_Assistant_PRD_v1.md)  
 **Canonical requirements:** [`../Enterprise_Knowledge_Assistant_Requirements_v1.md`](../Enterprise_Knowledge_Assistant_Requirements_v1.md)
 
-> This is an implementation backlog for the target architecture. It is not a statement that these tasks are complete. Acceptance criteria in the Feature Specifications remain the behavioral source of truth.
+> This is the original dependency-ordered planning backlog, not the current implementation-status register. For current status, use `specs/001-project-foundation/tasks.md`, feature task files 004–010, the API contract, and approved decisions.
 
 ## 1. How to Use This Backlog
 
@@ -19,8 +19,9 @@
 - A task is complete only when its implementation, tests, and acceptance evidence are complete. “Test requirements” below describe required coverage, not optional suggestions.
 - `Feature spec` references the acceptance criteria IDs in the Feature Specifications document. Foundation tasks support those features and cite canonical requirements where appropriate.
 - Backend means Spring Boot/Spring AI/PostgreSQL work; UI means React + TypeScript work; QA/Platform means cross-cutting test or runtime work.
-- The feature specification defines supported behavior. Product and architecture decisions (identity, providers, upload limits, duplicates, retention, deletion, tuning values, MVP scope) are recorded in [`product-decisions.md`](product-decisions.md) as DEC-001 to DEC-008.
+- The feature specification defines supported behavior. Product and architecture decisions (identity, providers, upload limits, duplicates, retention, deletion, tuning values, MVP scope, extraction libraries, and CRAG/web search) are recorded in [`product-decisions.md`](product-decisions.md) as DEC-001 to DEC-010.
 - Hybrid retrieval, reranking, feedback, conversation history, and broker-based ingestion are deferred from the MVP (DEC-008).
+- CRAG P1–P4 are approved behind disabled-by-default configuration; external search is a bounded dual-opt-in exception (DEC-010). Retrieval diagnostics are recorded in specification 009.
 
 ## 2. Dependency-Ordered Summary
 

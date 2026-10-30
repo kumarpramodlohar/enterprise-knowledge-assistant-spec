@@ -28,17 +28,18 @@ Build a secure and reliable enterprise knowledge assistant that allows authorize
 
 ### Core capabilities
 
-- Secure authentication and role-based authorization.
+- Secure local authentication and Keycloak OIDC, with server-side role-based authorization.
 - Collection-level access control.
 - Document upload and lifecycle management.
-- PDF, DOCX, and TXT text extraction.
+- PDF, DOCX, TXT, and Markdown text extraction.
 - Document chunking and embedding generation.
 - Vector similarity search using PostgreSQL and pgvector.
 - Metadata filtering and retrieval optimization.
 - Evidence-grounded answers using an LLM.
-- Source citations linking answers to supporting document passages.
+- Typed internal/external citations linking answers to supporting evidence.
 - Explicit insufficient-evidence responses.
-- Feedback collection and retrieval-quality evaluation.
+- Retrieval-quality evaluation and safe retrieval diagnostics.
+- Optional disabled-by-default corrective RAG, including the approved dual-opt-in external-search fallback.
 - Logging, monitoring, error handling, and operational controls.
 
 ## 4. Technology Stack
@@ -46,7 +47,7 @@ Build a secure and reliable enterprise knowledge assistant that allows authorize
 ### Backend
 
 - Java 21
-- Spring Boot 3.x
+- Spring Boot 4.1.1
 - Spring AI
 - Spring Security
 - PostgreSQL
@@ -126,7 +127,7 @@ enterprise-knowledge-assistant-spec/
     └── task-template.md
 ```
 
-This is the target structure. Create folders and files incrementally as the workflow requires them.
+This was the original target structure. The current repository uses `docs/` for top-level product/architecture records and numbered `specs/` directories for feature specifications, plans, and tasks. See `rg --files` or the repository root for the current layout.
 
 ## 6. Purpose of Key Directories
 

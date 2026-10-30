@@ -3,14 +3,14 @@
 ## Feature Specifications
 
 **Document ID:** EKA-FS-001  
-**Version / status:** 1.0 / Draft for review  
+**Version / status:** 1.1 / Approved baseline behavior; implementation evidence is tracked in feature task records
 **Prepared date:** 2026-10-09  
 **Target release:** MVP v1  
 **Product requirements:** [`Enterprise_Knowledge_Assistant_PRD_v1.md`](Enterprise_Knowledge_Assistant_PRD_v1.md)  
 **Architecture:** [`Enterprise_Knowledge_Assistant_Architecture_v1.md`](Enterprise_Knowledge_Assistant_Architecture_v1.md)  
 **Canonical requirements:** [`Enterprise_Knowledge_Assistant_Requirements_v1.md`](Enterprise_Knowledge_Assistant_Requirements_v1.md)
 
-> This document turns the product and canonical requirements into feature-level behavior and acceptance criteria. It describes target behavior, not proof that the features have already been implemented. Where a detail remains undecided, it is called out rather than silently assumed.
+> This document turns the product and canonical requirements into feature-level behavior and acceptance criteria. The baseline features are implemented; task records provide verification evidence and identify remaining evaluation and release-readiness gaps. Where a detail remains undecided, it is called out rather than silently assumed.
 
 ## 1. Purpose and Scope
 
