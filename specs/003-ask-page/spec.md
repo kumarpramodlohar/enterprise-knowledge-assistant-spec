@@ -40,6 +40,6 @@ Authorization is enforced server-side before retrieval, citations and AI calls. 
 ## Out of scope
 Conversation history, follow-up threads and feedback (DEC-008); document preview or download; collection display names (the API returns IDs only).
 
-## Open items
-- OI-1: Collection display names need an API change (names in `/me` or a collections endpoint).
-- OI-2: Role display label uses the API role (Administrator or Member); whether to show persona names such as "Knowledge Seeker" needs a decision.
+## Owner decisions
+- DEC-011 (2026-11-03): Keep API-authoritative role labels (Administrator or Member); do not map them to Figma persona names.
+- DEC-011 (2026-11-03): Continue displaying collection IDs; collection display names and an API expansion are out of scope.

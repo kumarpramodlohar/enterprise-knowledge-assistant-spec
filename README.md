@@ -86,6 +86,7 @@ enterprise-knowledge-assistant-spec/
 ├── README.md
 ├── AGENTS.md
 ├── backlog.md
+├── plan.md
 │
 ├── .github/
 │   ├── copilot-instructions.md
@@ -144,6 +145,9 @@ This was the original target structure. The current repository uses `docs/` for 
 | `.github/instructions/` | Path-specific Copilot instructions                                                  |
 | `templates/`            | Standardized document templates                                                     |
 | `backlog.md`            | Unresolved questions, planned work, and implementation progress                     |
+| `plan.md`               | Ordered execution, dependencies, and verification criteria for remaining work       |
+
+The [Evaluation Developer Guide](docs/Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md) explains LLM evals and the proposed EKA evaluation pipeline; its draft requirements are in [specs/011-evaluation-pipeline](specs/011-evaluation-pipeline/spec.md).
 
 ## 7. Spec-Driven Development Workflow
 
@@ -297,11 +301,4 @@ To begin contributing to EKA:
 
 ## 14. Current Project Status
 
-This repository is the starting point for specification-driven development.
-
-Update this section as the project progresses:
-
-- [ ] Repository structure established.
-- [ ] Requirements reviewed and approved.
-- [ ] Initial product and architecture decisions recorded.
-- [ ]
+The core MVP flows are implemented in the backend and frontend. Desktop/mobile Figma review is complete. Release readiness is still pending: live Keycloak verification and representative evaluation with human review remain blocked, so foundation tasks T18 and T19 remain blocked. See the [remaining backlog](backlog.md), [remaining work plan](plan.md), and [foundation task register](specs/001-project-foundation/tasks.md) for current status.

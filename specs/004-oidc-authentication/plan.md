@@ -3,7 +3,7 @@
 **Specification:** [spec.md](./spec.md)
 
 ## Architecture
-The SPA signs in with Authorization Code + PKCE through `oidc-client-ts` and sends the access token as a bearer token. The existing Spring Security OAuth2 resource server (non-`local` profiles) validates it and `OidcUserProvisioningFilter` provisions the user. No API contract changes.
+The SPA signs in with Authorization Code + PKCE through `oidc-client-ts` and sends the access token as a bearer token. The Spring Security OAuth2 resource server (non-`local` profiles) validates issuer, signature, expiry, and the configured API audience before `OidcUserProvisioningFilter` provisions the user. `EKA_OIDC_AUDIENCE` is required when OIDC is enabled. No API contract changes.
 
 ## Components (frontend)
 - `src/app/config.ts`: parses and validates `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID`.
@@ -18,8 +18,9 @@ The SPA signs in with Authorization Code + PKCE through `oidc-client-ts` and sen
 `oidc-client-ts`; Keycloak realm `eka` with client `eka-frontend`.
 
 ## Security considerations
-Public client with PKCE; tokens in memory; fixed error text; server authorization unchanged; backend validates the issuer and signature. Cross-origin deployments would need backend CORS (not added; proxy or same-origin hosting is assumed).
+Public client with PKCE; tokens in memory; fixed error text; server authorization unchanged; backend validates issuer, signature, expiry, and audience. Keycloak must issue the API audience configured by `EKA_OIDC_AUDIENCE`. Cross-origin deployments would need backend CORS (not added; proxy or same-origin hosting is assumed).
 
 ## Testing strategy
 - Vitest: config validation, SSO button states, callback success and failure, expiry, sign-out, no-access notice (all with a fake OIDC client).
-- Manual: real Keycloak login, `/me`, first-login provisioning, token renewal, sign-out.
+- Automated backend tests cover the audience validator's accept/reject behavior and OIDC profile wiring.
+- Manual: real Keycloak login, audience claim, `/me`, first-login provisioning, token renewal, sign-out.

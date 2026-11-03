@@ -5,9 +5,9 @@
 | ID | Task | Repository | Files | Status |
 |---|---|---|---|---|
 | L01 | Integrate Tailwind CSS v4 | Frontend | `vite.config.ts`, `src/index.css` | Done (build, 48 unit tests pass) |
-| L02 | Build `LoginPage` from Figma frame | Frontend | `src/pages/LoginPage.tsx` | Done; visual comparison with Figma not yet performed |
+| L02 | Build `LoginPage` from Figma frame | Frontend | `src/pages/LoginPage.tsx` | Done; desktop split visually aligned with Figma; mobile layout remains a responsive single column |
 | L03 | Add `/login` route and protected-route redirect | Frontend | `src/app/App.tsx`, `src/components/Layout.tsx` | Done |
 | L04 | Unit and accessibility tests | Frontend | `src/pages/LoginPage.test.tsx`, `src/app/App.test.tsx` | Done (48 passed) |
 | L05 | Update end-to-end test | Frontend | `e2e/assistant-and-documents.spec.ts` | Done (1 passed) |
 | L06 | Enable SSO button | Frontend | `LoginPage.tsx` | Done (see 004 task K03) |
-| L07 | Visual review against Figma in a browser | Frontend | — | Not started |
+| L07 | Visual review against Figma in a browser | Frontend | — | Done (desktop frame reviewed; responsive mobile stack checked) |

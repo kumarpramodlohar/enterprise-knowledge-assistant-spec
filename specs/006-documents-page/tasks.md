@@ -8,5 +8,5 @@
 | D02 | Implement responsive Documents page layout and Figma visual hierarchy | Frontend | Done |
 | D03 | Add supported collection/status filters and accurate result summaries | Frontend | Done |
 | D04 | Preserve upload and lifecycle actions with safe confirmation/feedback | Frontend | Done |
-| D05 | Compare desktop/mobile rendering with Figma and record verification | Frontend / Specification | Not started |
+| D05 | Compare desktop/mobile rendering with Figma and record verification | Frontend / Specification | Done (desktop and mobile; mobile summary, filters, and upload action aligned) |
 | D06 | Add bounded polling while visible ingestion is queued/processing | Frontend | Done |

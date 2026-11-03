@@ -14,8 +14,9 @@ If a decision changes, update this file first, then the affected spec or task.
 | DEC-006 | Deletion                             | Soft delete, purge after 7 days                             | Approved                    |
 | DEC-007 | RAG tuning values                    | Starting values below                                       | Approved                    |
 | DEC-008 | MVP scope                            | Optional features deferred                                  | Approved                    |
-| DEC-009 | Document extraction libraries        | Apache PDFBox (PDF), Apache POI (DOCX), plain read (TXT/MD) | Proposed (pending approval) |
+| DEC-009 | Document extraction libraries        | Apache PDFBox (PDF), Apache POI (DOCX), plain read (TXT/MD) | Approved                    |
 | DEC-010 | Corrective RAG (CRAG) and web search | P1–P4 approved; external search has dual opt-in and defaults off | Approved |
+| DEC-011 | Ask-page labels and collection display | Keep API role labels and collection IDs; no persona mapping or display-name API change | Approved |
 
 ---
 
@@ -31,6 +32,8 @@ If a decision changes, update this file first, then the affected spec or task.
 - Local dev mode must be disabled by default outside the `local` profile.
 - Roles and collection permissions are stored in PostgreSQL and mapped from the user's identity subject.
 - **OIDC provider: Keycloak** (owner instruction, 2026-10-16). The backend still uses standard OIDC, so the provider stays replaceable.
+- **OIDC token policy:** Access-token lifetime is 5 minutes; Keycloak brute-force lockout begins after 5 failed attempts (owner approval, 2026-11-03).
+- **OIDC audience:** The backend requires a configured `EKA_OIDC_AUDIENCE` and rejects tokens whose `aud` claim does not contain it (owner approval, 2026-11-03). Keycloak must issue the configured API audience.
 - **Frontend flow:** Authorization Code with PKCE for a public client (no client secret), using `oidc-client-ts`; tokens are kept in memory only. Details: [specs/004-oidc-authentication](../../specs/004-oidc-authentication/spec.md).
 
 **Affects:** EKA-04, EKA-06, EKA-20
@@ -132,7 +135,7 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 
 ## DEC-009: Document extraction libraries
 
-**Status:** Proposed. Not approved; requires explicit human approval.
+**Status:** Approved by product owner on 2026-11-03.
 
 **Proposal:** Keep the existing extraction libraries: Apache PDFBox for PDF, Apache POI (`poi-ooxml`) for DOCX, and plain text reading for TXT and MD. Do not add LangChain Community (Python/JavaScript only, not usable in the Java backend) or LangChain4j.
 
@@ -169,3 +172,11 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 **Baseline limitation:** Existing 30-case reports are not human reviewed and show zero Recall@5 at threshold 0.70. This is not representative quality evidence and does not complete T18/T19. See [specs/005-corrective-rag](../../specs/005-corrective-rag/spec.md).
 
 **Affects:** EKA-15, EKA-17, EKA-19 (future)
+
+## DEC-011: Ask-page labels and collection display
+
+**Status:** Approved by the product owner on 2026-11-03.
+
+**Decision:** Continue displaying the API-authoritative role labels (Administrator or Member) and collection IDs. Do not map roles to Figma persona names or add collection display names to the API in the current scope.
+
+**Affects:** Ask-page copy and collection selection; no backend API change.
