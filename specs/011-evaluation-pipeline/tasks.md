@@ -6,7 +6,7 @@ Status values: `Not started`, `Blocked` (names the blocker), `Done`. Nothing is 
 
 | ID | Task | Repository | Files | Depends on | Verifies | Status |
 |---|---|---|---|---|---|---|
-| EV01 | Review the spec; record decisions for OI-1–OI-9 in `product-decisions.md` | Specification | `docs/implementation/product-decisions.md`, `specs/011-evaluation-pipeline/spec.md` | — | — | Blocked: owner decisions |
+| EV01 | Review the spec; record decisions for OI-1–OI-12 in `product-decisions.md` | Specification | `docs/implementation/product-decisions.md`, `specs/011-evaluation-pipeline/spec.md` | — | — | Blocked: owner decisions |
 | EV02 | Add the evaluation guide to the documentation index/README | Specification | `README.md` | — | — | Done |
 | EV03 | Extract loader/validator into `lib/dataset.mjs`; support v1 and v2 rows; no behavior change | Backend | `evaluation/evaluate.mjs`, `evaluation/lib/dataset.mjs`, `evaluation/test/` | EV01 | AC-1, AC-2 | Blocked: EV01 |
 | EV04 | Extract API client with timeout, failure budget, and explicit error counting | Backend | `evaluation/lib/client.mjs`, `evaluation/test/` | EV03 | NFR-3 | Blocked: EV01 |

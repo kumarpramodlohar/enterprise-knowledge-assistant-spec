@@ -40,7 +40,7 @@ Application evals (component, workflow, and whole-application) for the EKA chat 
 ### Methods
 - FR-12: Each metric shall declare its method: programmatic/deterministic (code), human review, or model-graded (LLM judge). Methods and selection guidance are described in the evaluation guide (§6.1).
 - FR-13: An LLM judge shall not affect any pass/fail result until its agreement with human labels on a sample has been measured and recorded (calibration).
-- FR-14: Human review shall use a documented rubric and 1–5 scales for groundedness and usefulness; review data shall be importable into the report.
+- FR-14: Human review shall use a documented rubric and 1–5 scales for groundedness and usefulness (helpfulness); the helpfulness rubric anchors are 5 = fully answers the question, accurate and complete, appropriate tone; 3 = partially helpful, missing something or slightly off; 1 = unhelpful, wrong, or irrelevant (guide §6.1.1). Reports shall show the score distribution and number of rated answers; review data shall be importable into the report. Treatment of correct abstentions on unanswerable questions is an open item (OI-10).
 
 ### Runs, reports, and comparison
 - FR-15: Every run shall record dataset hash/version, model and configuration versions, embedding configuration, prompt version, runner version, and timestamps.
@@ -55,7 +55,8 @@ Application evals (component, workflow, and whole-application) for the EKA chat 
 
 ### Authentication and automation
 - FR-22: The runner shall support the local profile now and OIDC bearer authentication when a Keycloak test realm exists (OI-5); credentials come from the environment only.
-- FR-23: The suite shall be runnable on demand and, after approval, on a schedule or in CI with non-confidential data (OI-6).
+- FR-23: The suite shall be runnable on demand and, after approval, on a schedule or in CI with non-confidential data (OI-6). In CI, a build shall fail when a metric is below an approved threshold (OI-7); until thresholds are approved the run is report-only.
+- FR-24: Online (production-traffic) evaluation is not part of this feature's first delivery. Any online evaluation shall be added only after OI-12 is decided, and shall keep captured and computed signals free of question, answer, and passage text unless an approved privacy design says otherwise (guide §6.4, §6.5, §9.7).
 
 ## Non-functional requirements
 - NFR-1: Runs are reproducible: same dataset, versions, and settings produce comparable results; nondeterminism is documented and sample counts recorded.
@@ -83,6 +84,7 @@ Application evals (component, workflow, and whole-application) for the EKA chat 
 - AC-17: Given six answerable questions with per-question Recall@5 of 1.0, 0.5, 1.0, 1.0, 0.0, and 0.5, then the report shows each per-question value and a mean of approximately 0.67 with the sample size.
 - AC-18: Given a dataset version created under a different chunking or embedding configuration than the running system, then the report warns that chunk-ID labels may be stale.
 - AC-19: Given a run, then the report lets a reviewer combine retrieval and answer outcomes per case (full recall/wrong answer, zero recall/correct answer, unanswerable/answered) to separate retrieval, generation, and abstention failures.
+- AC-20: Given human helpfulness ratings, then the report shows the distribution of scores 1–5 and the number of rated answers, not only the mean, and reports groundedness and helpfulness separately.
 
 ## Error scenarios
 - Dataset missing, unreadable, empty, or invalid: fail fast with a safe message.
@@ -106,6 +108,8 @@ Carried from the foundation specification as evaluation targets only: ≥ 80% su
 - A separately deployed evaluation service, UI dashboard, or hosted eval platform (revisit only after the first approved baseline).
 - Storing conversation history or user feedback in the application (DEC-008).
 - Changing retrieval defaults, thresholds, or prompts as part of building the pipeline.
+- Online human evaluation: A/B testing on production traffic and human-in-the-loop review of live answers (guide §6.1.2). Red-team findings are handled manually and added to the dataset as adversarial regression cases (FR-5, FR-11).
+- Online evaluators, tracing or observability tooling, live dashboards, and alerting on production traffic (guide §6.4, §6.5), pending OI-12.
 
 ## Open items
 - **OI-1: Raw retrieval visibility.** Current Recall@5 uses returned citations. Options: (a) keep citation-based metrics and label them; (b) add an authorized, non-production evaluation/diagnostic response carrying retrieved chunk IDs, ranks, and scores; (c) run an in-process Java evaluation harness. *Recommendation: (b), disabled by default in deployed profiles.*
@@ -117,3 +121,6 @@ Carried from the foundation specification as evaluation targets only: ≥ 80% su
 - **OI-7: Approval of thresholds** and which metrics become release gates.
 - **OI-8: Dataset and reviewers.** An authorized representative corpus and reviewer availability are required (backlog B06); this specification does not remove that dependency.
 - **OI-9: Stable gold labels.** Chunk IDs change when documents are re-chunked, re-embedded, or re-uploaded. Options: (a) label chunk IDs and record the ingestion configuration, re-labelling after changes; (b) label a stable document reference plus a text anchor and resolve to chunk IDs before each run; (c) label documents only and score at document level. *Recommendation: (a) first, evaluate (b) if re-labelling cost becomes high.*
+- **OI-10: Helpfulness scoring of unanswerable questions and naming.** The source rubric defines only scores 5, 3 and 1 for answerable questions. Options: (a) a correct abstention scores 5 and an invented answer scores 1; (b) score helpfulness only on answerable cases and track abstention separately; (c) keep the rubric as-is. Also confirm that "helpfulness" equals the existing `humanReview.usefulness` key. *Recommendation: (a), with the key unchanged.*
+- **OI-11: Evaluation runner language.** The current runner (`evaluation/evaluate.mjs`) and the planned modules are Node.js (ES modules). Python has the richest eval ecosystem (e.g., RAGAS, DeepEval, statistics and notebook tooling), which may matter for LLM-judge calibration and metric breadth. Options: (a) Node.js only for the MVP; (b) Node.js runner plus an optional, separate Python component (for example judge calibration or analysis) that reads and writes the same versioned dataset and JSON report files, so neither runtime depends on the other's internals; (c) rewrite the runner in Python; (d) in-process Java harness (see OI-1 option c). Constraints for any option: call the public API as a real authorized user; keep the dataset and report formats language-neutral (JSON, schema-versioned); do not send confidential content to an external judge or library without authorization (guide §10); and avoid maintaining two parallel implementations of the same metric. *Recommendation: (a) for the MVP, designing the dataset/report schemas to be language-neutral so (b) can be added later without rework; decide (b) or (c) when a specific library need is established.*
+- **OI-12: Online evaluation scope and privacy.** Online evals need per-turn logs and user signals; the notes' design stores raw messages, retrieved context, responses, and feedback, which DEC-008 and specs 005/009 currently prohibit. Options: (a) none for the MVP — offline evals plus scheduled report-only runs and text-free operational metrics only; (b) captured, text-free signals only (latency, errors, evidence-classification counts) on a dashboard with threshold alerts; (c) full tracing with sampled evaluators, requiring an approved privacy design (what is stored, PII scrubbing, retention, access control, external-provider authorization) and a reversal or amendment of DEC-008; (d) opt-in user feedback capture (also needs a DEC-008 amendment). Related: OI-4, OI-6, OI-7. *Recommendation: (a), then (b) using existing health/log/metric signals; revisit (c)/(d) only after the owner approves a privacy design. Tool selection (for example LangSmith or a self-hosted store) is deferred.*

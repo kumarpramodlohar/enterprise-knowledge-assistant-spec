@@ -17,7 +17,7 @@
 3. [What an application eval can target](#3-what-an-application-eval-can-target)
 4. [Risk categories](#4-risk-categories)
 5. [Why component evals are not enough (RAG failure points)](#5-why-component-evals-are-not-enough)
-6. [The 8-step eval pipeline](#6-the-8-step-eval-pipeline) — includes eval methods (§6.1), building a golden dataset (§6.2), and analyzing results (§6.3)
+6. [The 8-step eval pipeline](#6-the-8-step-eval-pipeline) — includes eval methods (§6.1) with the kinds of human evaluation (§6.1.2) and an all-types summary (§6.1.3), reference-based vs reference-free evals (§6.1.4), building a golden dataset (§6.2), analyzing results (§6.3), offline versus online evals (§6.4), and building an online eval pipeline (§6.5)
 7. [Where EKA is today](#7-where-eka-is-today)
 8. [Mapping EKA to the eval taxonomy](#8-mapping-eka-to-the-eval-taxonomy)
 9. [Proposed EKA eval pipeline](#9-proposed-eka-eval-pipeline)
@@ -393,10 +393,124 @@ flowchart TD
 | Prompt-injection and cross-collection leakage checks | Programmatic where a known marker or unauthorized ID can be detected; human review otherwise |
 | Groundedness / faithfulness, hallucination, relevance | LLM judge (after calibration) with human sampling |
 | Answer correctness against a reference answer | Programmatic for exact facts; human or judge for free text |
-| Usefulness, clarity | Human review |
+| Usefulness / helpfulness, clarity | Human review (rubric in §6.1.1); LLM judge only after calibration |
 | Citation accuracy (does the source really support the claim?) | LLM judge or human review |
 
 An LLM judge is a model too, so its verdict must be validated before it influences a decision (§9.5).
+
+#### 6.1.1 Rubrics and the Helpfulness example
+
+Human and LLM-judge methods both need a **rubric**: written descriptions of what each score means, so two reviewers (or a reviewer and a judge) give the same score to the same answer. The notes give this example:
+
+| Score | Meaning (from the notes) |
+|---|---|
+| **5** | Fully answers the question, accurate and complete, appropriate tone |
+| **3** | Partially helpful — missing something or slightly off |
+| **1** | Unhelpful, wrong, or irrelevant |
+
+The source defines only the anchors 5, 3, and 1. Scores 2 and 4 are not defined in the notes; the guide treats them as "between the neighbouring anchors" and recommends that reviewers use them only when an answer clearly sits between two anchors (this is our interpretation, not part of the source).
+
+**What "helpful" means for EKA.** A helpful EKA answer lets the user complete their task using their own authorized documents:
+
+| Situation | What a helpful response looks like |
+|---|---|
+| The documents contain the answer | A correct, complete answer, in clear language, with citations the user can verify. |
+| Only part of the answer is in the documents | The supported part, with the missing part stated honestly (this is a 3, not a 1). |
+| The documents do not contain the answer | A clear "insufficient evidence" response with no invented answer (see proposal below). |
+| The question is multi-part | Every part is addressed (completeness). |
+| Retrieved content contains instructions | The answer ignores them and still answers the question. |
+
+**Helpfulness is not the same as groundedness.** An answer can be fluent and useful-sounding yet unsupported, or fully faithful yet not answer the question. Score them separately (groundedness answers "is every claim supported?", helpfulness answers "did it solve the user's question?"), and read them together:
+
+| Helpfulness | Groundedness | Interpretation |
+|---|---|---|
+| High | High | Working as intended. |
+| High | Low | Dangerous: looks good but is unsupported — the main hallucination risk. |
+| Low | High | Faithful but off-target — check retrieval and the prompt. |
+| Low | Low | Broken — start with retrieval. |
+
+**Terminology.** The notes say *helpfulness*; the existing runner and dataset schema use the key `humanReview.usefulness` (1–5). This guide treats them as the same dimension and keeps the existing key for compatibility (proposal; see spec 011 FR-14).
+
+**Proposal — unanswerable questions (needs owner approval).** The 5/3/1 anchors assume an answerable question. For a question with no supporting evidence, a correct abstention should arguably score 5 and a confident invented answer 1, so unanswerable cases are not penalized for "not answering". This is not in the source and is not decided.
+
+**How to use the rubric**
+
+1. Reviewers score each answer 1–5 against the rubric and add a one-line reason (no confidential text in shared reports).
+2. Have a second reviewer score a sample and record agreement; resolve disagreements by refining the rubric wording.
+3. For an LLM judge, give it the same rubric and compare its scores with the human scores on a sample before trusting it (calibration).
+4. Report the **score distribution**, not only the mean, and the number of rated answers — a mean of 3.5 can be all 3s and 4s or a mix of 1s and 5s.
+
+#### 6.1.2 The kinds of human evaluation
+
+"Human" is the most general method, and a person can take part in an eval in five different roles. Mixing them up is a common source of confusion, so the guide separates them.
+
+| # | Role | What the human does | When it happens | EKA example |
+|---|---|---|---|---|
+| 1 | **Direct grading / rating** | Reads outputs and scores them against a rubric. The most basic role: the human is the grader. | Offline, on a sample of runs | Rating answers 1–5 for groundedness and helpfulness (§6.1.1) |
+| 2 | **Gold-answer / dataset creator** | Writes or verifies the correct answers (gold SQL, gold document IDs, concept rubrics) and curates the test set so it covers the real question distribution. | Before running (step 3) | Confirming the gold chunk IDs for each question (§6.2) |
+| 3 | **Red teaming** | Actively attacks the system to find failures: crafting jailbreaks, prompt injections, adversarial and edge-case inputs, trying to make it produce harmful or wrong output. This is creative adversarial work that automated evals cannot originate. | Offline, before release and periodically | Planting instructions inside an uploaded document; asking for another collection's content; trying to extract the system prompt |
+| 4 | **A/B testing** | Real users act as graders in production. Their behavior — thumbs-up, task completion, re-asking, escalation — is the verdict on which version is better. | Online, in production | Comparing two prompt or retrieval versions by re-ask rate |
+| 5 | **HITL (human-in-the-loop)** | A human is placed inside the production flow as a checkpoint, reviewing, approving, editing, or rejecting live outputs before they reach the user. It is triggered on the risky slice: low-confidence, high-stakes, or flagged outputs. | Online, per request | Holding low-evidence answers for review before they are shown |
+
+**Offline versus online.** Roles 1–3 improve the system *before* users see it. Roles 4 and 5 operate *on live traffic* (see §6.4 for the full offline/online comparison). Only roles 1–3 are feasible for EKA today (see below).
+
+**How each role relates to the other methods.** Roles 1 and 2 produce the labels that calibrate an LLM judge and the reference data that programmatic checks compare against. Red teaming finds failure types the dataset did not anticipate; each confirmed finding should become a regression case (§6 outer loop). A/B testing and HITL measure or control real outcomes, which automated offline evals can only approximate.
+
+**What this means for EKA (proposal, not approved):**
+
+| Role | Fit for EKA today | Note |
+|---|---|---|
+| Direct grading / rating | In scope | Needs reviewers and the rubric; backlog B06 |
+| Gold-answer / dataset creator | In scope | Needs authorized, representative documents; stable labels (OI-9) |
+| Red teaming | In scope | Mapped to the safety criteria in §4.1; manual first, automate repeatable attacks afterwards |
+| A/B testing | Not available | Needs production usage data and feedback capture; DEC-008 defers feedback and spec 009 forbids logging questions (§10 item 6) |
+| HITL | Not in the MVP | Would be a product feature, not only an eval; requires a separate approved decision (confidence signal, reviewer workflow, privacy) |
+
+#### 6.1.3 All eval types at a glance
+
+| Question | Answer |
+|---|---|
+| What is being evaluated? | Model eval (frontier labs) or **application eval** (EKA focus) — §2 |
+| Which part? | Component, workflow, or entire application — §3, §5 |
+| Which risk? | Quality, safety, operational — §4 |
+| Who or what gives the verdict? | **Programmatic**, **human**, or **LLM-as-judge** — §6.1 |
+| If human, in which role? | Rating, dataset creation, red teaming, A/B testing, HITL — §6.1.2 |
+| Compared against what? | A reference answer (**reference-based**) or only a rubric (**reference-free**) — §6.1.4 |
+| When? | **Offline** (before release, fixed dataset) or **online** (production traffic) — §6.4 |
+
+Rule of thumb: use code wherever correctness is mechanical, use an LLM judge where "good" can be described by a rubric, and use humans for the nuanced and high-stakes cases and to validate the other two.
+
+#### 6.1.4 Reference-based versus reference-free evals
+
+This is a second, independent way to classify an eval. §6.1 asks *who gives the verdict* (code, human, LLM). This section asks *what the output is compared against*.
+
+| | **Reference-based** | **Reference-free** |
+|---|---|---|
+| Definition | Each test case has a **reference**: a known-correct answer, or the key things a correct answer must contain, written down in advance. | There is **no predefined correct answer**. The output's quality is judged directly, on its own terms. |
+| How it is graded | Compare the output against the reference. | Judge against a criterion or rubric. |
+| What the rubric is | (If used) a checklist of required facts for that item. | A scale or standard ("what does a good answer look like"), **not** a per-item correct answer. |
+| Needs a golden dataset with answers? | Yes: references must be written and maintained. | No per-item answers; needs a good rubric. |
+| Strength | Objective and repeatable; measures correctness. | Works where no single right answer exists; also works on live traffic, where no reference exists. |
+| Limit | Costly to build; goes stale when documents change; free text is hard to compare exactly. | More subjective; quality depends on the rubric and judge; cannot prove factual correctness by itself. |
+
+The two axes combine freely. For example, an LLM judge can be reference-based (it compares the answer with a reference answer) or reference-free (it scores helpfulness against a rubric only).
+
+**EKA mapping (proposal, not approved):**
+
+| EKA check | Reference needed? | Reference | Method |
+|---|---|---|---|
+| Recall@K, MRR, hit rate | Reference-based | Gold chunk IDs (§5.6, §6.2) | Programmatic |
+| Answer correctness | Reference-based | Reference answer or key facts per question | Programmatic for exact facts; human or judge for free text |
+| Correct abstention on unanswerable questions | Reference-based | A label "no evidence exists" | Programmatic |
+| Citation resolves to an authorized source | Rule-based | A rule, no per-item answer | Programmatic |
+| Groundedness / faithfulness | Reference-free in the sense that no gold answer is needed; the *retrieved evidence* serves as the comparison source | Retrieved passages | LLM judge or human |
+| Helpfulness, tone, clarity | Reference-free | Rubric (§6.1.1) | Human or calibrated LLM judge |
+| Latency, error rate | Neither | Threshold | Programmatic |
+| Production monitoring (step 8) | Reference-free | Rubric only, since no gold answer exists for new questions | Sampled judge or human review |
+
+**Rule of thumb.** Use reference-based evals where you can afford the reference, because they measure correctness. Use reference-free evals where no single right answer exists or in production. In both cases, failures found by a reference-free check on live traffic should be turned into reference-based regression cases (§6 outer loop) once a human has written the correct answer.
+
+**Note on groundedness.** Groundedness compares the answer to the retrieved evidence, not to a gold answer. The source notes do not classify it explicitly; the placement above is this guide's interpretation.
 
 ### 6.2 Building a golden dataset (detail for step 3)
 
@@ -502,6 +616,127 @@ Note that **retrieved IDs that are not gold are not automatically wrong** (e.g.,
 #### What EKA's report gives you today
 
 The current runner prints aggregate metrics and per-case rows without question or answer text, but they are **citation-based** (§5.6, gap G1). It does not yet list the retrieved IDs, classify misses, or slice by category. Spec 011 adds those (AC-3, AC-14–AC-17). Until then, investigate individual misses with the retrieval diagnostics logs from spec 009 (rank, score, threshold outcome, no text).
+
+### 6.4 Offline versus online evals (when the eval runs)
+
+§6.1 asked who gives the verdict, and §6.1.4 asked what the output is compared against. This section covers the third axis: **when** the eval runs relative to deployment.
+
+#### Offline evals
+
+Run **before deployment**, after the application is built, on a fixed, pre-collected dataset (the golden dataset, §6.2). Benefits:
+
+1. **Pre-release testing (gating):** decide whether a build may ship.
+2. **Version comparison:** compare two prompts, models, or retrieval settings on the same data.
+3. **Regression testing:** confirm that old failures stay fixed.
+
+Because offline evals are fast, cheap, and repeatable, they can run in a **CI pipeline**. The pipeline compares each metric with a percentage threshold and **fails the build if a result falls below it**. In EKA this is proposal-only until thresholds are approved (spec 011 OI-6, OI-7); evals run report-only until then.
+
+#### Online evals
+
+Run **after deployment**, on live production traffic, as real users interact with the system.
+
+**Biggest challenge: in production there is no answer key.** Quality has to be *estimated* (rubrics, judges, user behavior), not compared with a stored correct answer. This makes online evals mostly reference-free (§6.1.4).
+
+**Why offline is not enough after deployment.** The notes list three things a fixed dataset cannot cover:
+
+| Post-deployment problem | What it means | Examples from the notes |
+|---|---|---|
+| **Unanticipated inputs** | Real users ask things nobody put in the dataset. | Questions mixing Hindi and English; ambiguous half-questions; an angry rant with a real question buried inside; adversarial prompt injection; edge cases never considered |
+| **Emergent / systemic failures** | Problems that only exist at scale, under load, or over time. | A retrieval index silently lagging its source documents; cost per conversation quietly tripling after a prompt change; a p99 latency tail frustrating a slice of users; a subtle bias visible only across thousands of conversations; degradation only under real concurrent load |
+| **Drift** | The world moves and the offline dataset ages. | A golden dataset that is no longer relevant to what users ask or what the documents now say — so the offline eval may be **obsolete** |
+
+The notes also jot a rough figure of **200–500** next to this list (apparently a sample or dataset size). It is not explained in the source, so this guide does not treat it as a requirement.
+
+#### Offline versus online at a glance
+
+| | **Offline eval** (before deployment) | **Online eval** (after deployment) |
+|---|---|---|
+| Data | Fixed, pre-collected dataset | Live production traffic |
+| Answer key | Known in advance | None — quality must be estimated |
+| Timing | Runs before shipping | Runs continuously, live |
+| Inputs seen | Only what you anticipated | The real, messy distribution |
+| Catches | Known regressions | Drift, surprises, emergent bugs |
+| Best for | Gating, version comparison, CI | Real-world quality, drift detection |
+| Cost and speed | Fast, cheap, repeatable | Ongoing; needs sampling to afford |
+
+**They are complementary, not optional.** *Offline gates what ships; online watches what shipped.* A useful way to remember it: **offline evals tell us the correctness of the application; online evals tell us the normality of its current state.** Together they form one loop: production failures found online become new dataset cases (step 8 → 3) that the next offline run protects against.
+
+```mermaid
+flowchart LR
+    D[Golden dataset] --> OFF[Offline eval: CI gate, version comparison, regression]
+    OFF -->|passes| SHIP[Deploy]
+    SHIP --> ON[Online eval: live traffic monitoring]
+    ON -->|failures, drift, new input types| D
+    ON -->|threshold breached| ALERT[Alert]
+```
+
+#### How do you judge correctness online?
+
+With no answer key, correctness is approximated:
+
+- **User feedback** is the main correctness signal (thumbs up/down, escalation, rephrase, drop-off).
+- **Evaluators** (rubric-based LLM judges or humans) estimate faithfulness, relevance, and similar properties on sampled traffic.
+- **Distribution metrics** can be tracked: the share of conversations in each signal state, or of judge scores in each band, over time. A shift in the distribution (for example the rephrase rate rising after a release) is the online equivalent of a regression. The notes ask whether a distribution metric can measure correctness online; the answer is that it measures **change and normality** reliably and correctness only indirectly, so it should complement, not replace, sampled review.
+
+### 6.5 Building an online eval pipeline (detail for step 8)
+
+#### Step 1 — Logging
+
+Capture a **structured, replayable record of every conversation turn** (the notes use a tracing tool such as LangSmith for this). Recommended contents:
+
+| Group | Fields |
+|---|---|
+| Identity and threading | `conversation_id`, `turn_id`, `user_id` / `session_id`, timestamp |
+| Input | Raw user message, plus any preprocessing (normalized text, detected language or intent) |
+| Retrieved context | The chunks/passages retrieved for the turn |
+| Output | Response text, `model_name`, `prompt_version` (needed for A/B testing and for "which version regressed"), tool calls, finish reason |
+| Operational telemetry (the *operational-metric family*) | `latency_ms` (ideally split into retrieval vs generation), `prompt_tokens`, `completion_tokens`, derived cost, error/status codes |
+| Downstream user signals (the *behavioral-metric family*) | Thumbs up/down, escalation to support, drop-off, rephrase, conversion |
+
+**Engineering properties the logging must have:**
+
+| Property | Meaning |
+|---|---|
+| **Non-blocking** | Logging must never add latency to the response; send to a queue and write in the background. |
+| **Durable and queryable** | Store in a warehouse or observability tool you can run analytical queries against, not scattered text logs. |
+| **Late-signal attachment** | Signals arrive at different times (thumbs-down in seconds, escalation in an hour, conversion the next day), so records are keyed on `conversation_id` and updated as signals arrive. |
+| **PII handling** | Scrub or tokenize emails, phone numbers, and payment details; apply retention limits and access control. |
+
+#### Two kinds of signals
+
+| | **Captured signals** | **Computed signals** |
+|---|---|---|
+| How produced | Read directly from the trace; no evaluator | Produced by an evaluator over logged turns |
+| Examples | Thumbs up/down, escalation rate, abandonment/drop-off, rephrase rate, conversion, latency (p50/p95/p99), cost per conversation, token usage, error rate | Faithfulness, answer relevance, correctness, hallucination, toxicity, bias and fairness, PII leakage / prompt injection, conciseness, task completion / satisfaction |
+| Compute needed | Almost none | Yes — an LLM judge or other evaluator per scored turn |
+| Delivery | Dashboard | Dashboard, after evaluators run |
+
+**Captured-signal pipeline**
+
+1. **Log** the signals (Step 1 above).
+2. **Create the signals** (the examples above) and send them to a **dashboard**; this needs little compute.
+3. **Alert** when a signal crosses a threshold you set.
+
+**Computed-signal pipeline**
+
+1. **Log** the turns.
+2. **Run evaluators.** A powerful LLM as judge can be costly, so avoid scoring everything: use **random sampling** from the logs, and add a targeted strategy, for example sampling the logs that already show a problem (thumbs-down, rephrase, escalation, errors).
+3. **Alert** when a score crosses a threshold.
+
+#### Tracing versus datasets (LangSmith example)
+
+In a tool such as LangSmith there are two things: **tracing** and **datasets**.
+
+| Evaluators run on… | The pipeline is… |
+|---|---|
+| **Traces** (live logged turns) | **Online** |
+| **Datasets** (fixed example sets) | **Offline** |
+
+The same evaluator (for example a faithfulness judge) can usually serve both, which keeps offline and online scores comparable. The notes give LangSmith as an example tool; this guide does not select a tool for EKA (see §9.7).
+
+#### The self-improving loop
+
+Both pipelines can feed a loop driven by a **threshold matrix**: set a threshold per signal; when online signals or sampled scores cross a threshold, alert, investigate, add the confirmed failures to the golden dataset, change the prompt/model/retrieval, and confirm with an offline run before redeploying. A human stays in the loop for deciding what counts as a failure and what the correct answer is.
 
 ---
 
@@ -617,7 +852,7 @@ backend/evaluation/
 | 5. Run | `node evaluation/evaluate.mjs` with pinned model/config/dataset versions. |
 | 6. Evaluate | Score + comparison against a stored baseline; improve prompt/model/system and re-run. |
 | 7. Analyze | Per-category slices, worst-case list, failure-cluster notes in the report. |
-| 8. Deploy & monitor | Operational metrics from existing logs/metrics; production failures enter the dataset through an approved path (see §10). |
+| 8. Deploy & monitor | Operational metrics from existing logs/metrics; production failures enter the dataset through an approved path (see §10). Online evals are a proposal only (§6.4, §6.5, §9.7). |
 
 ### 9.3 Metric catalogue (proposed)
 
@@ -656,12 +891,37 @@ See §6.1 for the definition of each method and how to choose one.
 | Method | Use for | Caveat |
 |---|---|---|
 | Code checks | Recall, MRR, citation validity, latency, format | Only objective properties. |
-| Human review | Groundedness, usefulness, correctness ground truth | Slow; needs a rubric and reviewer availability. |
+| Human review | Groundedness, usefulness, correctness ground truth; also dataset creation and red teaming (§6.1.2) | Slow; needs a rubric and reviewer availability. A/B testing and HITL are not available for the MVP. |
 | LLM judge | Scaling groundedness/hallucination checks | Must be **calibrated against human labels** (agreement measured on a sample) before it influences decisions. Content sent to an external judge needs explicit authorization (§10). |
 
 ### 9.6 Reporting
 
 Each run writes a machine-readable report and a short Markdown summary containing: dataset hash and version, model and configuration versions, per-metric results with sample sizes, per-category slices, latency percentiles, failures to inspect, comparison against the stored baseline, and known limitations. Reports never contain question or answer text unless the dataset is explicitly non-confidential.
+
+### 9.7 Offline and online evals for EKA (proposal)
+
+| Aspect | Offline (§6.4) | Online (§6.5) |
+|---|---|---|
+| Status in EKA | Runner exists; pipeline proposed in spec 011 | **Not in scope today**; open item OI-12 |
+| Data | Golden dataset (backlog B06 still needed) | Live traffic — blocked by privacy rules below |
+| Automation | Manual, then scheduled report-only, then CI gate after thresholds are approved (OI-6, OI-7) | None |
+| Signals | All metrics in §9.3 | Only privacy-safe operational signals (latency, error rate, status, counts) |
+
+**Conflict to resolve before any online eval.** The notes' logging design stores the raw user message, retrieved context, and response text for every turn, plus feedback signals. Approved EKA rules prohibit this for the MVP:
+
+| Notes' logging field or signal | Current EKA rule |
+|---|---|
+| Raw message, response text, retrieved passages | DEC-008 (no conversation or answer storage); specs 005 and 009 (never log questions, passages, prompts) |
+| Thumbs up/down, escalation, rephrase | Feedback APIs deferred (DEC-008; API contract) |
+| `conversation_id`, `user_id`, history | Conversation history deferred (DEC-008) |
+
+This guide does not resolve the conflict. Options and a recommendation are in spec 011 OI-12 and OI-4. What EKA can do now within its rules:
+
+- Track **operational signals** from existing health, log and metric data (latency split into retrieval and generation, error and timeout rates, evidence-classification counts, tokens). No text is involved (spec 011 FR-21).
+- Run **offline evals on a schedule** (report-only) to catch drift in model, prompt, or index behavior against a fixed dataset.
+- Refresh the golden dataset by hand from reviewer-submitted failures (OI-4), which is the manual form of the step 8 → 3 loop.
+
+If online evals are later approved, the PII, retention, access-control, non-blocking, and external-judge rules in §6.5 and §10 would all apply, and the tool choice (for example a tracing product versus a self-hosted store) would need a decision. Sending logged turns to an external tracing or judge service is itself an external disclosure that needs explicit authorization.
 
 ---
 
@@ -674,7 +934,7 @@ These come from approved project rules and apply to any eval work:
 3. **No external sharing without authorization.** Sending document passages or answers to an external judge model needs explicit approval; default to a local provider for confidential data.
 4. **Untrusted content.** Treat retrieved and uploaded text as untrusted; adversarial cases test that instructions inside documents are not followed.
 5. **No invented results.** Never record scores that were not produced by a run. Synthetic or fixture data is not "representative evaluation".
-6. **Production feedback vs privacy.** DEC-008 defers conversation history and feedback, and spec 009 forbids logging questions. The step 8 → 3 loop therefore needs an explicitly approved, privacy-safe mechanism (open decision) — until then, failures are added manually by a reviewer.
+6. **Production feedback vs privacy.** DEC-008 defers conversation history and feedback, and spec 009 forbids logging questions. The step 8 → 3 loop therefore needs an explicitly approved, privacy-safe mechanism (open decision, spec 011 OI-4 and OI-12; background in §6.4, §6.5, §9.7) — until then, failures are added manually by a reviewer.
 7. **Thresholds are proposals** until the product owner approves them; evals report-only until then.
 
 ---
@@ -692,6 +952,17 @@ These come from approved project rules and apply to any eval work:
 | **LLM judge** | A model that scores another model's output against a rubric. |
 | **Gold evidence** | The chunk(s) a human confirms answer the question. |
 | **Golden dataset** | A curated, versioned set of questions with human-labelled correct evidence (and optionally reference answers); see §6.2. |
+| **Offline eval** | An eval run before deployment on a fixed dataset with known answers; used for gating, version comparison, and regression testing (CI); see §6.4. |
+| **Online eval** | An eval run after deployment on live traffic, where there is no answer key; detects drift, surprises, and emergent failures; see §6.4. |
+| **Drift** | Change over time in user inputs, documents, or behavior that makes a fixed offline dataset obsolete. |
+| **Captured signal** | A metric read directly from the trace (thumbs, escalation, latency, cost, errors); see §6.5. |
+| **Computed signal** | A metric produced by an evaluator (faithfulness, hallucination, toxicity, etc.); see §6.5. |
+| **Trace** | The structured record of one conversation turn: input, retrieved context, output, telemetry, and signals. |
+| **Reference-based eval** | An eval where each case has a known-correct answer (or required key facts) to compare against; see §6.1.4. |
+| **Reference-free eval** | An eval with no per-item correct answer; quality is judged against a rubric or criterion; see §6.1.4. |
+| **Red teaming** | Humans deliberately attacking the system (jailbreaks, prompt injection, edge cases) to find failures; see §6.1.2. |
+| **A/B testing** | Comparing two versions on live traffic, using real user behavior as the verdict; see §6.1.2. |
+| **HITL (human-in-the-loop)** | A human reviews, approves, edits, or rejects live outputs before users see them, usually only for risky outputs; see §6.1.2. |
 | **Regression case** | A past failure kept in the dataset to prevent recurrence. |
 
 **Why not just use model benchmarks?** They tell you what a model *can* do in general, not whether *your* product, corpus, prompt, retrieval, and latency budget work together.
