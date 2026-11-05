@@ -10,6 +10,33 @@
 
 > **How to read this page.** Sections 1–6 explain evals in general (what, why, types, risks, the 8-step process). Sections 7–10 map those ideas to EKA: what already exists, what is missing, and what is proposed. Anything labelled **Proposal** is not approved. Numeric targets quoted here are _proposals from the foundation specification_, not release gates.
 
+> **New to this? Start here.** An **eval** is a way of checking, with a fixed list of test questions and clear marking rules, whether an AI assistant is doing a good job — much like marking an exam. You ask the assistant many questions, compare its answers with what a good answer looks like, and turn the result into numbers and notes that help you decide: _ship it, fix it, or keep the old version_. Every section below starts with a short "In plain words" line for readers who prefer the simple version.
+
+### Plain-English cheat sheet
+
+| Term | In plain words | Everyday comparison |
+|---|---|---|
+| **Eval** | A repeatable check of how good the assistant is. | An exam with an answer key and marking scheme. |
+| **RAG** | The assistant first looks up passages in your documents, then writes an answer from them. | An open-book exam: find the page, then write the answer. |
+| **Retriever** | The part that finds the right passages. | The student flipping to the right page. |
+| **Generator** | The part that writes the answer from those passages. | The student writing the answer. |
+| **Chunk** | A small piece of a document (a few paragraphs) stored for searching. | One index card from a long book. |
+| **Top K** | The first K passages the retriever returns (K = 5 means five). | The five pages the student bookmarked. |
+| **Recall@K** | "Of the pages that hold the answer, how many did we find in the top K?" | Found 1 of the 2 pages you needed = 0.5. |
+| **MRR** | "How close to the top was the first right page?" | A right page at position 1 is better than at position 5. |
+| **Grounded / faithful** | Everything the answer says can be found in the passages it was given. | "Show your sources" — no outside guesses. |
+| **Hallucination** | The assistant states something that is not in the documents, as if it were true. | Confidently making up a page number. |
+| **Abstain / insufficient evidence** | The assistant says it cannot find the answer instead of guessing. | "I don't know — it's not in the book." |
+| **Citation** | A pointer to the passage an answer came from. | A footnote. |
+| **Golden dataset** | The fixed list of test questions plus the correct evidence, checked by people. | The exam paper with its answer key. |
+| **Rubric** | A written scale that says what a 1, 3, or 5 means. | A marking scheme. |
+| **LLM judge** | Another AI that marks the answers using a rubric. | A teaching assistant marking papers. |
+| **Baseline** | The last accepted set of results, used for comparison. | Last term's marks. |
+| **Regression** | Something that used to work and now breaks. | A student who passed before and now fails. |
+| **Drift** | Real questions or documents change over time, so old tests stop matching reality. | An exam that no longer covers what is taught. |
+| **Offline / online eval** | Offline = tested before release on a fixed set. Online = watched after release on real use. | Mock exam vs. watching how students do in real work. |
+| **p95 latency** | The time that 95 out of 100 requests finish within. | "Almost everyone is served within 1.5 seconds." |
+
 ## Contents
 
 1. [What is an eval?](#1-what-is-an-eval)
@@ -27,6 +54,8 @@
 ---
 
 ## 1. What is an eval?
+
+> **In plain words:** an eval is the whole "how will we test this assistant?" plan — what we test, what counts as good, which questions we use, who or what does the marking, and when we do it. A single score is only one piece of that plan.
 
 An **eval is not just a metric. An eval is the complete testing setup** for an LLM-powered system. It answers six questions:
 
@@ -57,6 +86,8 @@ An **eval is not just a metric. An eval is the complete testing setup** for an L
 
 There are two types. Both are LLM evals, but they answer different questions and are owned by different people.
 
+> **In plain words:** a *model eval* asks "how smart is this AI in general?" (like testing a new engine on a test bench). An *application eval* asks "does **our product** work for **our users**?" (like test-driving the finished car). We focus on the second.
+
 ### 2.1 Model evals
 
 **Evaluate the model itself — its general capabilities.** Typical capabilities:
@@ -84,6 +115,8 @@ In an application eval we do **not** ask "Can the model do this?" We ask **"Does
 
 The first column lists generic questions that apply to any LLM-powered application.
 
+> **In plain words:** think of seven everyday questions — Is it right? Did it use our documents? Can I trace every claim to a source? Is it easy to understand? Did it make things up? Is it fast enough? Is it safe?
+
 | Generic question (any LLM app)                                  | EKA equivalent                                                                           | Eval dimension              |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------- |
 | Did it answer the user's question correctly?                    | Did it answer the user's question correctly from the uploaded documents?                 | Answer correctness          |
@@ -103,6 +136,8 @@ Each of these can fail independently, and each can be an eval target (Section 3)
 ---
 
 ## 3. What an application eval can target
+
+> **In plain words:** you can test one small part (the document finder), a chain of parts (find, then answer), or the whole product the way a user experiences it. Small-part tests tell you *where* the problem is; whole-product tests tell you *whether there is* a problem.
 
 The "Failure Points / Target" diagram splits targets into three levels:
 
@@ -132,6 +167,37 @@ flowchart TD
 ## 4. Risk categories
 
 LLM application risk falls into three categories. Keep them separate when designing metrics — a high quality score says nothing about safety.
+
+> **In plain words:** there are three different ways an assistant can let you down — it can give a **bad answer** (quality), a **harmful answer** (safety), or be **too slow, too costly, or unreliable** (operational). Doing well on one says nothing about the others.
+
+**How a person would ask each question.** Use these everyday wordings when writing a rating sheet or briefing a reviewer.
+
+| Category | Technical name | How a human asks it |
+|---|---|---|
+| **Quality** | Correctness | "Is the answer actually right? If I checked the document myself, would it match?" |
+| | Relevance | "Did it answer what I asked, or did it wander off?" |
+| | Completeness | "I asked two things — did it answer both?" |
+| | Groundedness / faithfulness | "Can I find every claim in the passages it quoted?" |
+| | Hallucination | "Did it make anything up that isn't in the documents?" |
+| | Abstention | "When the documents don't have the answer, did it honestly say so?" |
+| | Citation accuracy | "Does the source it points to really say that?" |
+| | Helpfulness / usefulness | "Could I get my job done with this answer? Is it clear?" |
+| **Safety** | Toxicity | "Is any of it rude, abusive, or hateful?" |
+| | Harmful content | "Does it explain something dangerous or illegal?" |
+| | PII / data leakage | "Did it reveal private information, or content I'm not allowed to see?" |
+| | Prompt injection resistance | "If a document says 'ignore your rules', does the assistant still behave?" |
+| | Bias / fairness | "Does it treat different groups of people fairly?" |
+| **Operational** | Latency | "Did I get my answer quickly enough?" |
+| | Cost | "Is each answer cheap enough to run all day?" |
+| | Error rate | "How often does it just fail or time out?" |
+| | Latency under load | "Does it stay fast when many people use it at once?" |
+
+**Examples of a reviewer's one-line verdicts**
+
+- "Correct and cited — 5."
+- "Partly right: it covers the leave policy but misses the approval step — 3."
+- "Sounds confident but the source says something different — 1."
+- "Good: it said it couldn't find this in the documents instead of guessing."
 
 | Category                | The question                                     | Concerns                                                                                                | Is about…                            |
 | ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -221,6 +287,8 @@ The last column maps each criterion to EKA.
 
 ## 5. Why component evals are not enough
 
+> **In plain words:** checking each part separately is not enough. A student can pick the right page *and* write a neat, honest answer, yet still answer the wrong question from the wrong paragraph. You also have to test the whole thing together.
+
 A RAG chatbot has two primary failure points.
 
 ### 5.1 Retrieval-time failure
@@ -228,6 +296,8 @@ A RAG chatbot has two primary failure points.
 > Did the system retrieve the relevant documents or not?
 
 Typical measures: Recall@K, MRR, hit rate, context relevance.
+
+> **In plain words:** did the assistant find the right pages in the first place? If not, the answer can't be right however well it is written.
 
 ### 5.2 Generation-time failure
 
@@ -237,6 +307,8 @@ Typical measures: Recall@K, MRR, hit rate, context relevance.
 > c) free of **hallucination** and of **extra content** the question did not ask for?
 
 Typical measures: faithfulness / groundedness, answer relevance, hallucination rate, citation validity.
+
+> **In plain words:** did the assistant (a) stick to what the passages say, (b) back every claim with evidence instead of its own memory, and (c) avoid inventing facts or rambling about things nobody asked?
 
 ### 5.3 Both can pass while the system fails
 
@@ -262,6 +334,8 @@ flowchart LR
 
 **Conclusion:** you need an eval on the **combination (Retrieval + Generator)** — an end-to-end _answer-correctness_ eval with a reference answer or gold evidence, not just component scores.
 
+> **In plain words:** the right page was in the pile, but the assistant answered from the first page it saw. Both parts "passed" and the user still got a wrong answer — so always check the final answer too.
+
 ### 5.4 There is still one more eval: operations
 
 Even if retrieval, generation, and the combination all pass, the system can **miss its latency threshold**. So a whole-application **latency** eval is also required (and by extension cost and error rate — the operational category).
@@ -277,6 +351,8 @@ Even if retrieval, generation, and the combination all pass, the system can **mi
 | Safety                                 | Application                   | Leaks, injection, harmful output                 |
 
 ### 5.6 How do I know the retriever is working? (Recall@K)
+
+> **In plain words:** count how many of the pages that hold the answer were among the first K pages found. Found all of them = 1.0; found half = 0.5; found none = 0. Then average across all test questions.
 
 The retriever is working when it **puts the evidence needed to answer the question into the top K results**. The standard measure is **Recall@K**:
 
@@ -330,6 +406,8 @@ If the retriever had returned both A and B in the top 5, Recall@5 would be 1.0. 
 
 This is the automation flow for an eval pipeline.
 
+> **In plain words — the 8 steps as a recipe:** (1) decide what you are testing, (2) decide what "good" means, (3) write the test questions, (4) decide who or what will mark them, (5) run the assistant on the questions, (6) mark the results and fix what is weak, (7) study the pattern of mistakes, (8) release and keep watching — and when real users hit a failure, add it to the test questions and go round again.
+
 ```mermaid
 flowchart TD
     S1[1. Define task and target] --> S2[2. Define success criteria]
@@ -362,6 +440,8 @@ flowchart TD
 - **Outer loop (step 8 → 3):** production failures become permanent regression cases.
 
 ### 6.1 Eval methods (detail for step 4)
+
+> **In plain words:** "who does the marking?" There are three markers: a **program** (fast and exact, but only for things a rule can check), a **person** (slow and costly, but best for judgement calls), and **another AI** (scales judgement calls, but must be checked against people first).
 
 An **eval method** is the mechanism that decides whether an output is good or not — the actual procedure that takes an output and produces a judgment about it. In the eval pipeline, step 4 chooses the method for each metric.
 
@@ -442,6 +522,8 @@ This rubric defines only the anchors 5, 3, and 1. Scores 2 and 4 are not defined
 
 #### 6.1.2 The kinds of human evaluation
 
+> **In plain words:** people can help in five ways — **mark answers**, **write the answer key**, **try to break the system on purpose** (red teaming), **let real users vote by how they behave** (A/B testing), or **approve risky answers before the user sees them** (human-in-the-loop).
+
 "Human" is the most general method, and a person can take part in an eval in five different roles. Mixing them up is a common source of confusion, so the guide separates them.
 
 | #   | Role                              | What the human does                                                                                                                                                                                                                                 | When it happens                          | EKA example                                                                                                                     |
@@ -482,6 +564,8 @@ Rule of thumb: use code wherever correctness is mechanical, use an LLM judge whe
 
 #### 6.1.4 Reference-based versus reference-free evals
 
+> **In plain words:** with a **reference** you mark an answer by comparing it with a correct answer written in advance (like an answer key). With **no reference** you mark it by asking "is this a good answer?" against a scale (like grading an essay).
+
 This is a second, independent way to classify an eval. §6.1 asks _who gives the verdict_ (code, human, LLM). This section asks _what the output is compared against_.
 
 |                                      | **Reference-based**                                                                                                                   | **Reference-free**                                                                                    |
@@ -513,6 +597,8 @@ The two axes combine freely. For example, an LLM judge can be reference-based (i
 **Note on groundedness.** Groundedness compares the answer to the retrieved evidence, not to a gold answer. Practitioners classify it differently; the placement above is this guide's interpretation.
 
 ### 6.2 Building a golden dataset (detail for step 3)
+
+> **In plain words:** a golden dataset is your exam paper. Write realistic questions in users' own words, have a person mark which document passages really contain each answer, include some questions that **cannot** be answered, and never change a version once it is in use — add a new version instead, so scores stay comparable.
 
 A **golden dataset** (gold set) is a curated set of questions where a human has recorded the **correct evidence** (and, optionally, the correct answer) in advance. Every automated retrieval metric is computed by comparing what the system returned against this ground truth, so the dataset's quality caps the quality of every score.
 
@@ -553,6 +639,8 @@ Observations worth copying:
 **Existing EKA tooling.** The backend already has a dataset builder (`build-dataset.mjs`), a 30-case seed question file, and an optional review-sheet export. These are not a representative, human-reviewed golden set (DEC-010).
 
 ### 6.3 Analyzing the evaluation results (detail for step 7)
+
+> **In plain words:** don't stop at the average. Look at which questions failed, group them by type, and ask "was it the page-finding or the answer-writing that went wrong?" — then fix that part and re-test.
 
 #### Worked example: Recall@5 per query
 
@@ -619,6 +707,8 @@ The current runner prints aggregate metrics and per-case rows without question o
 
 ### 6.4 Offline versus online evals (when the eval runs)
 
+> **In plain words:** **offline** = a mock exam before launch, using a fixed set of questions with known answers (cheap, repeatable, good for "can we ship?"). **online** = watching real users after launch, where nobody has an answer key (good for spotting surprises and slow decay). You need both: offline guards the door, online watches the room.
+
 §6.1 asked who gives the verdict, and §6.1.4 asked what the output is compared against. This section covers the third axis: **when** the eval runs relative to deployment.
 
 #### Offline evals
@@ -632,6 +722,8 @@ Run **before deployment**, after the application is built, on a fixed, pre-colle
 Because offline evals are fast, cheap, and repeatable, they can run in a **CI pipeline**. The pipeline compares each metric with a percentage threshold and **fails the build if a result falls below it**. In EKA this is proposal-only until thresholds are approved (spec 011 OI-6, OI-7); evals run report-only until then.
 
 #### The offline eval pipeline (step by step)
+
+> **In plain words:** every time something changes, run the same exam again, compare the marks with last time and with the pass mark, and block the release if a mark drops too far. If it fails, find out why, fix it, and run the exam again.
 
 The offline pipeline is steps 3–7 of the 8-step process (§6) run on a fixed dataset, wrapped so it can be repeated on every change. Everything it needs is in earlier sections; this shows how they connect.
 
@@ -740,6 +832,8 @@ With no answer key, correctness is approximated:
 
 ### 6.5 Building an online eval pipeline (detail for step 8)
 
+> **In plain words:** keep a careful record of every conversation turn (without slowing the assistant down or exposing private data), turn some of it into dashboard numbers (like thumbs-down rate or response time), have a judge score a *sample* of answers, and send an alert if a number crosses a line you set.
+
 #### Step 1 — Logging
 
 Capture a **structured, replayable record of every conversation turn** (a tracing tool such as LangSmith can do this). Recommended contents:
@@ -801,6 +895,8 @@ Both pipelines can feed a loop driven by a **threshold matrix**: set a threshold
 ---
 
 ## 7. Where EKA is today
+
+> **In plain words:** EKA already has a simple test script that asks questions and measures how well it found the right passages and how fast it answered. It does **not** yet have a human-checked set of test questions, marks for "is the answer truthful?", a stored previous result to compare with, or an automatic pass/fail gate.
 
 Verified against the backend repository (`evaluation/evaluate.mjs`, `evaluation/README.md`) and the specification repository.
 
@@ -875,6 +971,8 @@ End-to-end answer correctness, latency, error rate, cost, and safety through the
 ---
 
 ## 9. Proposed EKA eval pipeline
+
+> **In plain words:** keep the test script where it is (in the backend project, separate from the live app), grow it into a proper pipeline, and run it against EKA's public interface the way a real user would.
 
 > **Proposal.** Subject to the open decisions in [spec 011](../specs/011-evaluation-pipeline/spec.md#open-items).
 
@@ -986,6 +1084,8 @@ If online evals are later approved, the PII, retention, access-control, non-bloc
 ---
 
 ## 10. Guardrails specific to EKA
+
+> **In plain words:** testing must follow the same safety rules as the product — use a real, correctly permitted user; keep confidential data out of the repository and logs; don't send private text to outside services without permission; treat document text as untrusted; and never report a score that wasn't actually produced by a run.
 
 These come from approved project rules and apply to any eval work:
 
