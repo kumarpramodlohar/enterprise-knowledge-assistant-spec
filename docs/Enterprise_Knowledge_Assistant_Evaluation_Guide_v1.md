@@ -5,7 +5,7 @@
 | **Document ID** | EKA-EVAL-GUIDE-001                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Status**      | Draft for review — explanatory guide, not an approved requirement                                                                                                                                                                                                                                                                                                                                           |
 | **Audience**    | Developers, QA, product owners, reviewers                                                                                                                                                                                                                                                                                                                                                                   |
-| **Source**      | Evaluation practice for LLM applications, analyzed against the current EKA code and specifications                                                                                                                                                                                                                                                                             |
+| **Source**      | Evaluation practice for LLM applications, analyzed against the current EKA code and specifications                                                                                                                                                                                                                                                                                                          |
 | **Related**     | [Feature specification 011](../specs/011-evaluation-pipeline/spec.md), [plan](../specs/011-evaluation-pipeline/plan.md), [tasks](../specs/011-evaluation-pipeline/tasks.md), [backend evaluation README](../../enterprise-knowledge-assistant-backend/evaluation/README.md), [foundation spec](../specs/001-project-foundation/spec.md) (AC-13), [DEC-007 / DEC-010](./implementation/product-decisions.md) |
 
 > **How to read this page.** Sections 1–6 explain evals in general (what, why, types, risks, the 8-step process). Sections 7–10 map those ideas to EKA: what already exists, what is missing, and what is proposed. Anything labelled **Proposal** is not approved. Numeric targets quoted here are _proposals from the foundation specification_, not release gates.
@@ -14,28 +14,28 @@
 
 ### Plain-English cheat sheet
 
-| Term | In plain words | Everyday comparison |
-|---|---|---|
-| **Eval** | A repeatable check of how good the assistant is. | An exam with an answer key and marking scheme. |
-| **RAG** | The assistant first looks up passages in your documents, then writes an answer from them. | An open-book exam: find the page, then write the answer. |
-| **Retriever** | The part that finds the right passages. | The student flipping to the right page. |
-| **Generator** | The part that writes the answer from those passages. | The student writing the answer. |
-| **Chunk** | A small piece of a document (a few paragraphs) stored for searching. | One index card from a long book. |
-| **Top K** | The first K passages the retriever returns (K = 5 means five). | The five pages the student bookmarked. |
-| **Recall@K** | "Of the pages that hold the answer, how many did we find in the top K?" | Found 1 of the 2 pages you needed = 0.5. |
-| **MRR** | "How close to the top was the first right page?" | A right page at position 1 is better than at position 5. |
-| **Grounded / faithful** | Everything the answer says can be found in the passages it was given. | "Show your sources" — no outside guesses. |
-| **Hallucination** | The assistant states something that is not in the documents, as if it were true. | Confidently making up a page number. |
-| **Abstain / insufficient evidence** | The assistant says it cannot find the answer instead of guessing. | "I don't know — it's not in the book." |
-| **Citation** | A pointer to the passage an answer came from. | A footnote. |
-| **Golden dataset** | The fixed list of test questions plus the correct evidence, checked by people. | The exam paper with its answer key. |
-| **Rubric** | A written scale that says what a 1, 3, or 5 means. | A marking scheme. |
-| **LLM judge** | Another AI that marks the answers using a rubric. | A teaching assistant marking papers. |
-| **Baseline** | The last accepted set of results, used for comparison. | Last term's marks. |
-| **Regression** | Something that used to work and now breaks. | A student who passed before and now fails. |
-| **Drift** | Real questions or documents change over time, so old tests stop matching reality. | An exam that no longer covers what is taught. |
-| **Offline / online eval** | Offline = tested before release on a fixed set. Online = watched after release on real use. | Mock exam vs. watching how students do in real work. |
-| **p95 latency** | The time that 95 out of 100 requests finish within. | "Almost everyone is served within 1.5 seconds." |
+| Term                                | In plain words                                                                              | Everyday comparison                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Eval**                            | A repeatable check of how good the assistant is.                                            | An exam with an answer key and marking scheme.           |
+| **RAG**                             | The assistant first looks up passages in your documents, then writes an answer from them.   | An open-book exam: find the page, then write the answer. |
+| **Retriever**                       | The part that finds the right passages.                                                     | The student flipping to the right page.                  |
+| **Generator**                       | The part that writes the answer from those passages.                                        | The student writing the answer.                          |
+| **Chunk**                           | A small piece of a document (a few paragraphs) stored for searching.                        | One index card from a long book.                         |
+| **Top K**                           | The first K passages the retriever returns (K = 5 means five).                              | The five pages the student bookmarked.                   |
+| **Recall@K**                        | "Of the pages that hold the answer, how many did we find in the top K?"                     | Found 1 of the 2 pages you needed = 0.5.                 |
+| **MRR**                             | "How close to the top was the first right page?"                                            | A right page at position 1 is better than at position 5. |
+| **Grounded / faithful**             | Everything the answer says can be found in the passages it was given.                       | "Show your sources" — no outside guesses.                |
+| **Hallucination**                   | The assistant states something that is not in the documents, as if it were true.            | Confidently making up a page number.                     |
+| **Abstain / insufficient evidence** | The assistant says it cannot find the answer instead of guessing.                           | "I don't know — it's not in the book."                   |
+| **Citation**                        | A pointer to the passage an answer came from.                                               | A footnote.                                              |
+| **Golden dataset**                  | The fixed list of test questions plus the correct evidence, checked by people.              | The exam paper with its answer key.                      |
+| **Rubric**                          | A written scale that says what a 1, 3, or 5 means.                                          | A marking scheme.                                        |
+| **LLM judge**                       | Another AI that marks the answers using a rubric.                                           | A teaching assistant marking papers.                     |
+| **Baseline**                        | The last accepted set of results, used for comparison.                                      | Last term's marks.                                       |
+| **Regression**                      | Something that used to work and now breaks.                                                 | A student who passed before and now fails.               |
+| **Drift**                           | Real questions or documents change over time, so old tests stop matching reality.           | An exam that no longer covers what is taught.            |
+| **Offline / online eval**           | Offline = tested before release on a fixed set. Online = watched after release on real use. | Mock exam vs. watching how students do in real work.     |
+| **p95 latency**                     | The time that 95 out of 100 requests finish within.                                         | "Almost everyone is served within 1.5 seconds."          |
 
 ## Contents
 
@@ -59,24 +59,24 @@
 
 An **eval is not just a metric. An eval is the complete testing setup** for an LLM-powered system. It answers six questions:
 
-| #   | Question                           | EKA example                                                                                          |
-| --- | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 1   | **What are we evaluating?**        | The `/api/v1/chat/query` answer path (retrieve → evidence check → generate → cite).                  |
-| 2   | **What does "good" mean?**         | Grounded in retrieved evidence, valid citations, honest "insufficient evidence", acceptable latency. |
-| 3   | **What test cases are we using?**  | A versioned, access-controlled set of questions with expected evidence.                              |
-| 4   | **How are we judging the output?** | Code checks, human review, and (proposal) a calibrated LLM judge.                                    |
-| 5   | **When are we running it?**        | Before a release, after changing prompt/model/threshold, and on a schedule.                          |
-| 6   | **Which tool are we using?**       | The versioned runner in the backend repository (`evaluation/evaluate.mjs`).                          |
+| #   | Question                           | EKA example                                                                                                                                             |
+| --- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **What are we evaluating?**        | The question-answering path in the app (find passages → check there is enough evidence → write the answer → cite sources) through `/api/v1/chat/query`. |
+| 2   | **What does "good" mean?**         | Answers come from the retrieved passages, citations are real, it honestly says "not enough evidence" when that is the case, and it replies fast enough. |
+| 3   | **What test cases are we using?**  | A fixed, versioned list of test questions with restricted access, each paired with the passages that should answer it.                                  |
+| 4   | **How are we judging the output?** | Automatic checks by code, review by people, and (proposal) an AI judge whose marking has first been checked against people.                             |
+| 5   | **When are we running it?**        | Before each release, after changing the prompt (the instructions given to the AI), the model, or the similarity cut-off, and on a regular schedule.     |
+| 6   | **Which tool are we using?**       | The test script in the backend repository (`evaluation/evaluate.mjs`).                                                                                  |
 
 **The goal is not just a score.** The goal is to answer practical decisions:
 
 - Can this model be used for this particular task or application?
 - Is the system good enough to ship?
 - Did prompt v2 improve over prompt v1?
-- Is the RAG answer grounded in the retrieved context?
+- Is the answer based on the passages the assistant found?
 - Is the agent completing the task correctly? _(EKA has no agent workflow in the MVP.)_
 - Is the chatbot safe for real users?
-- Is the latency under control?
+- Is the response time under control?
 
 > **Rule of thumb:** if an eval run cannot change a decision (ship / don't ship / keep prompt v1 / switch model), it is a report, not an eval.
 
@@ -86,7 +86,7 @@ An **eval is not just a metric. An eval is the complete testing setup** for an L
 
 There are two types. Both are LLM evals, but they answer different questions and are owned by different people.
 
-> **In plain words:** a *model eval* asks "how smart is this AI in general?" (like testing a new engine on a test bench). An *application eval* asks "does **our product** work for **our users**?" (like test-driving the finished car). We focus on the second.
+> **In plain words:** a _model eval_ asks "how smart is this AI in general?" (like testing a new engine on a test bench). An _application eval_ asks "does **our product** work for **our users**?" (like test-driving the finished car). We focus on the second.
 
 ### 2.1 Model evals
 
@@ -103,13 +103,282 @@ There are two types. Both are LLM evals, but they answer different questions and
 | Multimodal understanding | Can it understand images?                |
 | Tool use                 | Can it use tools?                        |
 
-Model capabilities are generally measured with **public benchmarks**. (well-known examples such as MMLU, GSM8K, and HumanEval are general industry knowledge)
+Model abilities are usually measured with **public benchmarks** — shared, standard tests that anyone can run. Well-known examples are MMLU (general knowledge), GSM8K (maths word problems), and HumanEval (coding).
 
-**Who owns it:** frontier model labs. An application engineer **consumes** these results when choosing a model; they do not re-run or build them.
+**Who owns it:** the big AI labs that build the models (often called frontier labs). Application engineers only **read** these results when choosing a model; they do not build or re-run them.
+
+#### 2.1.1 Why AI engineers need model evals
+
+> **In plain words:** before building on a model, you want to know how good it is, and you want to compare it with the others on equal terms. Model evals give you that.
+
+| # | Reason | What it means in plain words | Where it shows up in EKA |
+|---|---|---|---|
+| 1 | **Compare different models fairly** | Run the same tests, in the same way, on every model. Only then do the scores mean something when set side by side. | Choosing between Ollama and OpenAI for chat and for embeddings (DEC-002). |
+| 2 | **Track whether newer models are actually improving** | A newer model is not automatically a better one. Measure before and after instead of trusting the version number. | A provider releases a new version, or you swap `gpt-4o-mini` for another model. |
+| 3 | **Decide whether a model is safe for release** | Check for harmful, biased, or easily tricked behaviour before real users see it. This gives a clear go or no-go. | Part of the safety risk category in §4. |
+| 4 | **Build-versus-buy decisions** | Decide whether to pay for a hosted model (buy) or run an open model yourself (build). The scores, cost, speed and privacy needs give the evidence. | Hosted OpenAI versus a self-hosted Ollama model. |
+| 5 | **Know what a model can and cannot do** | A model that is weak at following instructions or reading long text will struggle in a RAG app, whatever else you build. | Early check on instruction following and long-context ability. |
+| 6 | **Separate "weak model" from "weak app"** | When an answer is bad, model results help you tell whether the model is the problem or your retrieval or prompt is. | Debugging a poor answer before changing retrieval settings. |
+
+Limits to keep in mind:
+
+- **Benchmarks wear out.** Some well-known tests get "solved" (models reach top scores) within a year or so, so a high score says less over time.
+- **A high score is not proof of real ability.** A model can score well by using shortcuts it picked up from its training data.
+- **Test setup matters.** The wording of the prompt and the answer format can change the result noticeably.
+- **A public score is not your result.** A model can top a public benchmark and still answer badly on your own documents. That is why EKA also needs application evals (§2.2).
+
+Short version: model evals tell you which engine to pick; application evals (the rest of this guide) tell you whether the whole car works on your road.
+
+#### 2.1.2 The core capabilities of a model (how to read a benchmark report)
+
+> **In plain words:** a benchmark report is a school report card for a model, with one grade per subject. To read it, you first need to know what each subject is, what it tests, and why anyone cares. This section explains the eight subjects. These capabilities describe general-purpose large language models (LLMs), not one particular application.
+
+Every public benchmark falls under one of these eight capability domains. When you see a score in a model's report, first ask "which domain is this?", then read the matching part below.
+
+| # | Capability domain | One-line meaning | Benchmark names you may see (examples) | Likely importance for EKA* |
+|---|---|---|---|---|
+| 1 | Knowledge and reasoning | How much the model knows, and whether it can think through several steps to a correct conclusion | MMLU, GPQA | High: answers must be sensible even when evidence is combined |
+| 2 | Coding and software engineering | Whether the model writes code that actually works and can handle real software projects | HumanEval, SWE-bench | Low for answering questions; high only if the team uses the model to write code |
+| 3 | Mathematics | Whether the model gets numbers and symbols exactly right | GSM8K, MATH, AIME | Medium: matters for questions that involve figures in documents |
+| 4 | Long context | Whether the model can really use very long inputs | Needle-in-a-haystack tests, RULER | High: EKA puts many retrieved passages into one prompt |
+| 5 | Vision and multimodal | Whether the model understands images, charts, forms and screens along with text | MMMU, ChartQA, DocVQA | Low for now: scanned documents and OCR are deferred (P5 in [the implementation backlog](implementation/Implementation_Backlog_v2.md)) |
+| 6 | Agentic and tool use | Whether the model can take actions, not just write text | BrowseComp, OSWorld, tau-bench | Low for now: EKA does not run autonomous agents (out of MVP scope) |
+| 7 | Safety and alignment | Whether the model can be trusted to behave responsibly | Refusal and jailbreak test suites | High: see the safety category in §4 |
+| 8 | Instruction following | Whether the model does exactly what it was asked, no more and no less | IFEval | High: EKA relies on the model obeying "answer only from the evidence" and "cite sources" |
+
+\*The importance column is guidance for reading reports, not an approved decision. Benchmark names change over time, so treat the examples as pointers rather than a fixed list.
+
+##### 1. Knowledge and reasoning
+
+- **What it measures:** how much factual knowledge the model learned during training, and whether it can connect several pieces of information and reason through them to the right conclusion.
+- **What comes under it:**
+  - *Factual recall across subjects.* Does the model know facts from biology, physics, chemistry, history, law, medicine, economics, philosophy and more? This is the most basic test of what the model has learned.
+  - *Multi-step logical reasoning.* Can the model combine several facts in the right order? Instead of answering from one fact, it must follow a chain of reasoning to reach the final answer.
+- **Why AI labs test it separately:** this domain is the usual stand-in for the question "how intelligent is this model?". It is also the capability the media and the public talk about most, so labs must show their models match or beat competitors on well-known knowledge and reasoning tests.
+- **Where it matters in real life:** analysing research papers, answering complex customer questions, writing technically accurate documents, and assisting professionals in law, medicine, science and finance.
+
+##### 2. Coding and software engineering
+
+- **What it measures:** whether the model can write code that actually works, and whether it can operate inside real software projects with large codebases, many files, development tools, repositories and complex workflows.
+- **What comes under it:**
+  - *Writing single functions.* Turn a plain-language instruction into a function that handles edge cases, checks its inputs and follows the required interface.
+  - *Fixing real bugs in existing code.* Given a real GitHub issue and an existing repository, find the root cause and produce a correct fix without breaking other parts of the software.
+  - *Changes across many files and long tasks.* Edit several files, understand how parts of the system depend on each other, and do work such as refactoring or adding features.
+  - *Command line and system administration.* Complete multi-step terminal tasks such as installing packages, configuring servers, running diagnostic commands and combining tools.
+  - *Calling APIs and functions.* Make correct API calls with the right parameters, handle errors, and process the results properly.
+- **Why AI labs test it separately:** better coding directly improves developer productivity and creates business value. Developers are also an important customer group and a major source of revenue, so labs compete hard on coding benchmarks.
+- **Where it matters in real life:** code generation, debugging, code review, CI/CD automation, software maintenance and general software engineering. Coding tests often show some of the biggest gaps between leading and weaker models.
+
+##### 3. Mathematics
+
+- **What it measures:** whether the model can do accurate symbolic and numerical reasoning. Maths is a handy test because the final answer is usually simply right or wrong. A response cannot succeed just by sounding convincing.
+- **What comes under it (from easy to very hard):**
+  - *School-level maths.* Multi-step word problems: turn the words into maths and do the calculations in the right order.
+  - *Competition-level problems.* Problems from contests such as AIME, which may need creative reasoning, counting methods, geometry, number theory and pattern spotting.
+  - *University and postgraduate maths.* Advanced topics such as real analysis, abstract algebra, topology, probability theory and differential equations, which may need long chains of reasoning.
+  - *Research-level maths.* Problems near the edge of current research, where even expert mathematicians may need days to reach a solution.
+- **Why AI labs test it separately:** maths is one of the cleanest tests of real reasoning. There is little room for an answer that sounds plausible but is wrong, so it shows whether the model can reason formally and verifiably instead of only matching patterns.
+- **Where it matters in real life:** scientific computing, financial modelling, engineering simulations, data analysis, and any application that needs precise numerical results.
+
+##### 4. Long context
+
+- **What it measures:** whether the model can effectively use information from very long inputs, sometimes hundreds of thousands of tokens. (A token is a small piece of text, roughly a short word or part of a word.)
+- **What comes under it:**
+  - *Finding one fact in a long text.* Locate a single piece of information hidden somewhere inside a very long document.
+  - *Following the same thing across distant mentions.* Track one person, entity, idea or rule across several mentions that are far apart in a document or conversation.
+  - *Combining information across a long text.* Summarise, count, compare or spot patterns using information spread across a large amount of text.
+  - *Understanding a code repository.* Move through a large codebase, understand how files relate, and reason about dependencies across files.
+- **Why AI labs test it separately:** the size of the "context window" (how much text the model can take in at once) has become a marketing number: 128K, then 200K, then 1M tokens. But a large advertised window does not guarantee the model can use all of it well. Labs therefore need to show their models genuinely use the capacity they claim.
+- **Where it matters in real life:** reviewing legal contracts, analysing academic papers, maintaining large codebases, handling long customer-support conversations, and working with large collections of documents.
+
+##### 5. Vision and multimodal
+
+- **What it measures:** whether the model can understand and reason about visual information together with text. ("Multimodal" means more than one kind of input, such as text plus images.)
+- **What comes under it:**
+  - *Charts and graphs.* Read axes, legends, data points and trends. The model may need to pull out exact values and also explain what the chart means overall.
+  - *Documents and forms.* Process scanned documents, invoices, tables and forms. The model must understand not only the words but also how they are laid out on the page.
+  - *Computer and phone screens.* Recognise buttons, menus, dialog boxes, input fields and the current state of an application.
+- **Why AI labs test it separately:** vision lets models do tasks that text-only systems cannot. It enables new uses, and it has become an important area where leading models can stand out now that many text benchmarks are close to being "solved".
+
+##### 6. Agentic and tool use
+
+- **What it measures:** whether the model can take actions instead of only producing text. An agentic model may browse the internet, call APIs, handle files, run code, operate software and finish complex multi-step tasks. To succeed it must plan its actions, choose the right tools, keep track of progress, and recover when something goes wrong. This is widely seen as one of the next big frontiers of AI evaluation.
+- **What comes under it:**
+  - *Web browsing and persistent research.* Move across many websites, follow links, search, and combine findings from many online sources. Some tasks may need dozens or even hundreds of pages.
+  - *Calling tools and APIs.* Pick the right function, pass valid parameters, handle responses, chain calls together, and recover from errors.
+  - *Using a computer.* Operate real applications by looking at the screen: clicking, typing and moving between word processors, spreadsheets, email clients and file managers.
+  - *Planning multi-step tasks.* Break a big goal into smaller steps, finish them in the right order, check results along the way, and change the plan when something fails.
+- **Why AI labs test it separately:** a model may hold a lot of knowledge and still be unable to use it to finish a practical task. Agentic tests measure the difference between **what the model knows** and **what it can actually do**. That gap is still large even among leading models.
+- **Where it matters in real life:** coding agents, research assistants, customer-service bots, data-entry automation, personal assistants, and any workflow where the AI must perform actions rather than simply give an answer.
+
+##### 7. Safety and alignment
+
+- **What it measures:** whether the model can be trusted to behave responsibly. It checks that the model refuses harmful requests, avoids deceiving people, avoids simply flattering them (sycophancy), resists attacks, and keeps following its safety principles even when a user pushes it to behave differently.
+- **What comes under it:**
+  - *Refusing harmful requests.* Does the model properly refuse requests about cybercrime, violence, harassment, misinformation and illegal activity? It must also not become so cautious that it refuses harmless, legitimate requests.
+  - *Resisting attacks and "jailbreaks".* Does the model keep its safety rules when someone tries to get around them with prompt injection (hidden instructions inside the input), role-play, encoded instructions or other tricks?
+  - *Truthfulness versus flattery.* Does the model give the correct answer even when it disagrees with what the user believes or expects? A safe, reliable model should not just tell users what they want to hear.
+  - *Cybersecurity ability.* Can the model perform advanced security tasks such as cryptography, reverse engineering, digital forensics and exploitation? This matters especially for understanding potentially dangerous independent capabilities.
+- **Why AI labs test it separately:** safety is both a legal and regulatory expectation and a major reputation concern.
+- **Where it matters in real life:** any organisation that releases an AI model to the public must test whether its safety controls really work. It directly affects legal liability, regulatory compliance, brand reputation, user trust and responsible deployment.
+
+##### 8. Instruction following
+
+- **What it measures:** whether the model does exactly what the user asked, no more and no less. Instructions may cover format, length, tone, style, structure or content. A model with excellent knowledge can still be frustrating to use if it keeps ignoring simple instructions.
+- **What comes under it:**
+  - *Rules that a program can check.* For example: stay within a word limit, use bullet points, produce valid JSON, follow a markdown structure, or use specific section headings.
+  - *Unclear or incomplete requests.* Work out what the user probably wants when the request is underspecified, ask a clarifying question when needed, and pick sensible defaults when appropriate.
+- **Why AI labs test it separately:** it strongly affects whether a model feels helpful or frustrating in daily use, and it is one of the capabilities most closely tied to user satisfaction in real production systems.
+- **Where it matters in real life:** almost every practical use of a language model depends on it. Examples: reports in a required format, code that follows specific style rules, structured JSON output, brand-tone requirements, and coherent multi-turn conversations.
+
+##### How to use this when reading a benchmark report
+
+1. **Find the domain.** Match each score to one of the eight domains above.
+2. **Pick the domains that matter for your application.** A high coding score tells you little about a document question-answering assistant like EKA.
+3. **Check the setup.** Note which prompt, format and settings were used, and whether the lab or an independent group ran the test (see §2.1.3 for the full list of settings to check).
+4. **Compare like with like.** Only compare models on the same benchmark run the same way (reason 1 in §2.1.1).
+5. **Then test on your own data.** Public scores shortlist models; EKA's own application evals (§2.2 onward) decide.
+
+#### 2.1.3 What a benchmark is made of, and what to check when comparing models
+
+> **In plain words:** a benchmark score is the result of a whole recipe: the questions, the way you ask them, the settings, the way you mark, and the way you add up the marks. Change any one ingredient and the same model gets a different number. So two scores only mean something side by side if the recipe was the same.
+
+A **benchmark** is a standard test used to measure one particular model capability (one of the eight domains in §2.1.2). Every benchmark has four parts.
+
+| Part | What it is | Plain-words example |
+|---|---|---|
+| 1. The dataset | The questions plus the answer key | GSM8K: a few thousand (about 8,000) school maths word problems, each paired with its correct number |
+| 2. The run configuration | The full list of settings the model was run under | How the question is worded, the model's settings, how many attempts, and whether tools were allowed |
+| 3. The scoring method | How an answer becomes a number | Find the answer in the model's reply, then check whether it is right |
+| 4. The aggregation | How thousands of marks become one headline number | 920 correct out of 1,000 becomes "92% on GSM8K" |
+
+##### Part 1: the dataset
+
+The dataset is the questions plus the answer key. Example question: *"Natalia sold clips to 48 friends in April, and then she sold half as many clips in May. How many clips did she sell altogether?"* The answer key says **72** (48 in April, 24 in May, 48 + 24 = 72).
+
+##### Part 2: the run configuration
+
+The run configuration is the list of every setting the model was run under. It has three layers. Two models can only be compared fairly if these match.
+
+| Layer | Setting | What it means | Why it changes the score |
+|---|---|---|---|
+| **a. How the question is asked** | Zero-shot versus few-shot | Do you show some worked examples first (few-shot) or none (zero-shot)? GSM8K is classically reported "8-shot", meaning 8 examples. | Examples reliably raise scores because they teach the model the expected answer format. |
+| | Chain-of-thought versus direct | Do you just ask, or add something like "think step by step"? | Asked bluntly, models often blurt out a wrong number. Asked to work through it (48 in April, half is 24 in May, 48 + 24 = 72), accuracy jumps a lot. |
+| **b. How the model picks its words** | Temperature | At temperature 0 ("greedy"), the model always picks the most likely next word, so results are repeatable. Above 0 it samples, so the same question can give different answers on different runs. | Most benchmarks use 0 so the result can be reproduced. A different temperature means a different (and less repeatable) score. |
+| | `max_tokens` | The maximum length of the reply. Step-by-step reasoning needs room. | If the limit is too low, the model is cut off mid-reasoning, never gives its final answer, and scores zero on a question it was solving correctly. That is a **setup failure, not a capability failure**, yet the score looks identical. |
+| **c. How attempts are counted, and what the model may use** | One attempt versus several | `pass@1` = one attempt. `pass@k` = k attempts, counted right if any one succeeds. `maj@k` (self-consistency) = ask k times and take the most common answer. | These give very different numbers for the same model. For example, 92% on `maj@8` might be only 85% on `pass@1`. If a report does not say which one it used, the number cannot be interpreted. |
+| | Tools on or off | May the model use a helper such as a Python interpreter? | A model with a Python tool scores very differently on maths than one without. GSM8K with code execution is barely the same test as GSM8K without it. |
+
+##### Part 3: the scoring method
+
+Scoring is how an output becomes a number. It has two steps.
+
+- **a. Extraction:** finding the answer inside the reply. The model does not just say "72". It says something like "Natalia sold 48 clips in April. Half of 48 is 24. So 48 + 24 = 72 clips altogether." Something must pull the 72 out. This is usually a simple pattern-matching rule (for example "take the last number" or "read what comes after ####").
+  - **Watch out:** this step is fragile and rarely discussed. If the model writes "72 clips", "$72" or "seventy-two", does the rule still catch it? A brittle extractor marks a correct model as wrong.
+- **b. Comparison:** deciding whether the extracted answer is right. For GSM8K that is easy: is 72 equal to the key's 72?
+  - **Closed-ended** questions have one right answer, so grading is automatic and there is nothing to argue about.
+  - **Open-ended** tasks such as "write a good summary" have no answer key. You need a person or an AI judge, and then the grader itself becomes a source of error and bias. Most benchmark controversy lives here (see §6.1 and §9.5).
+
+##### Part 4: the aggregation
+
+Aggregation turns thousands of right-or-wrong marks into one summary number, for example 920 of 1,000 becomes "92% on GSM8K". Even this step involves choices. One is a plain average versus an average weighted by subject, because a benchmark such as MMLU has 57 subjects of unequal size. Different choices give different headline numbers.
+
+##### Checklist when comparing models on a benchmark
+
+Before trusting a comparison, confirm that both models were scored with the same:
+
+1. **Dataset and version.**
+2. **Prompt style:** zero-shot or few-shot (and how many examples), and chain-of-thought or direct.
+3. **Temperature** (ideally 0 for repeatable results).
+4. **`max_tokens`** limit, large enough that reasoning is not cut off.
+5. **Attempt counting:** `pass@1`, `pass@k` or `maj@k`. If the report does not say, do not rely on the number.
+6. **Tools** on or off.
+7. **Answer extraction** rule, and whether it handles different ways of writing the answer.
+8. **Comparison method:** automatic key, person, or AI judge (and how the judge was checked).
+9. **Aggregation** method: plain or weighted average.
+
+If any of these differ or are not stated, treat the comparison as unreliable. The same checks apply to EKA's own evals: record them in the run report (§9.6) so that two runs can be compared fairly.
+
+##### How a model benchmark is run, step by step (for future reference)
+
+> **Scope:** EKA does not evaluate models today. This is recorded so the team knows what the work involves if it ever does, for example to choose between two AI providers.
+
+> **In plain words:** running a benchmark is a loop. For every question in the dataset, ask the model, pull out its answer, mark it right or wrong, and keep everything. After the last question, average the marks into one headline number.
+
+For **each item** in the dataset:
+
+| Step | What happens | Why it matters |
+|---|---|---|
+| 1. Load the item | Read one question and its correct answer (the answer key). | The key is never shown to the model. |
+| 2. Build the prompt | Add worked examples if the benchmark is few-shot, apply the model's chat format, and add the instructions. The result is the exact text the model will see. | Small prompt changes can move the score, so the exact prompt must be fixed and saved. |
+| 3. Call the model | Send the prompt with the fixed settings (temperature, `max_tokens` and so on). For a hosted model this is a web request. For a model run on your own machine it is a direct run of the model. | Fixed settings make the run repeatable. |
+| 4. Capture the raw output | Save exactly what the model wrote, without editing it. | When a score looks wrong, the raw output is the only way to tell whether the model failed or the answer-extraction step did. |
+| 5. Extract the answer | A rule or small parser pulls the final answer (for example `72`) out of the model's sentences. | A fragile rule can mark a correct answer wrong. |
+| 6. Grade | Compare the extracted answer with the key: 1 if it matches, 0 if not. | This is the per-item score. |
+| 7. Store | Save the score together with the prompt and output that produced it. | Lets anyone re-check a single result later. |
+
+**After the loop:** average the per-item scores into the headline number (for example 920 right out of 1,000 is 92%).
+
+```text
+results = []
+for item in dataset:
+    prompt = build_prompt(item, few_shot=8, template=chat_template)
+    output = model.generate(prompt, temperature=0, max_tokens=...)
+    pred   = extract_answer(output)        # e.g. last number in the text
+    score  = (pred == item.gold)           # 1 or 0
+    results.append({prompt, output, pred, item.gold, score})
+
+accuracy = mean(r.score for r in results)
+```
+
+Worked example: a model benchmarked on GSM8K (grade-school maths word problems) goes through exactly this loop. The same loop shape also fits EKA's own evals in §9, where the "item" is a golden-dataset question and the "model call" is the whole EKA answer flow.
+
+##### What else you must handle, and why teams use an evaluation harness
+
+The simple loop hides practical details that a real run must also handle:
+
+- **Extracting the final answer correctly.** The model may write "The answer is C", "C." or "Option C". All three must be read as the same answer.
+- **Scoring with the benchmark's exact method.** Using a different marking rule gives a number that cannot be compared with published results.
+- **Sending thousands of questions efficiently, in batches.**
+- **Retrying requests that fail**, so one network error does not leave a hole in the results.
+- **Handling rate limits**, so the provider does not block the run for sending too fast.
+
+An **evaluation harness** is a ready-made system that already handles these details. It already knows:
+
+1. Where to get the benchmark's questions (GSM8K, MMLU and so on).
+2. How to format each question.
+3. How to send it to the model.
+4. How to extract the model's answer.
+5. How to judge whether it is correct.
+6. How to calculate the final benchmark score.
+
+> **In plain words:** a benchmark is the exam paper. An evaluation harness is the whole exam-running system: the instructions, the answer-sheet format, the marking rules and the score calculation.
+
+Tools such as **lm-evaluation-harness**, **Inspect** and **HELM** act as evaluation harnesses. Using one also helps the comparison checklist above, because everyone who uses the same harness settings gets the same prompt, extraction and scoring. EKA does not need one today. If model comparison is ever needed, check these tools before writing a new runner.
+
+##### Why benchmark scores can be misleading
+
+> **In plain words:** a benchmark score is only trustworthy if the test was fair, is still hard, was run the same way for every model, and was summarised honestly. Each of these can fail.
+
+| Problem | What it means | Simple example | What to do |
+|---|---|---|---|
+| **Contamination** | The test questions leaked into the model's training data, so the model may have memorised them. | A student who saw the exam paper beforehand scores 95%. That shows memory, not understanding. Public benchmarks are most at risk because their questions sit online for years. | Prefer newer or private test sets, and check whether the lab reports contamination checks. |
+| **Saturation** | Top models already score very high, so the test can no longer tell them apart. | Two models score 96% and 97%. The gap is often noise, and the test has stopped measuring progress. | Look at harder benchmarks, and do not read much into small gaps. |
+| **Configuration gaming** | The score depends on how the run was set up (prompt style, examples, chain-of-thought, attempts, tools, temperature), so a setup can be chosen to flatter one model. | Model A is shown with `pass@8` and tools on, and is compared with Model B at `pass@1` and tools off. | Use the comparison checklist above. If the setup is not stated, do not rely on the number. |
+| **Aggregation** | One headline number hides detail. | An average over subjects of unequal size can hide a weak subject, or make two different models look equal. | Ask for the per-subject or per-category results, and how the average was calculated. |
+
+Other causes worth knowing:
+
+- **Wrong answer keys.** A few benchmark questions have mistakes in their keys, which caps or distorts scores.
+- **Answer-extraction bugs.** A correct answer is marked wrong because the rule could not read it (see the steps above).
+- **Teaching to the test.** A model tuned specifically for a famous benchmark may do worse on real work.
+- **Poor fit to your use case.** A public benchmark does not test your documents, your users or your permission rules. This is why EKA's own evals in §9 use EKA's own golden dataset.
+
+A benchmark score is a useful hint for shortlisting models, never proof that a model will work well in EKA.
 
 ### 2.2 Application evals (the focus for EKA)
 
-**Evaluate the behaviour and performance of an LLM-powered application — at the level of the entire system or of one component inside it.**
+**Check how well an application built on a large language model (LLM) behaves and performs — either the whole system or one part inside it.**
 
 In an application eval we do **not** ask "Can the model do this?" We ask **"Does the product work?"**
 
@@ -117,15 +386,15 @@ The first column lists generic questions that apply to any LLM-powered applicati
 
 > **In plain words:** think of seven everyday questions — Is it right? Did it use our documents? Can I trace every claim to a source? Is it easy to understand? Did it make things up? Is it fast enough? Is it safe?
 
-| Generic question (any LLM app)                                  | EKA equivalent                                                                           | Eval dimension              |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------- |
-| Did it answer the user's question correctly?                    | Did it answer the user's question correctly from the uploaded documents?                 | Answer correctness          |
-| Did it use the provided knowledge or context properly?          | Did it use the retrieved passages and cite them?                                         | Retrieval use, citations    |
-| Was the answer faithful to the retrieved or provided context?   | Does every claim trace back to cited evidence?                                           | Faithfulness / groundedness |
-| Was it clear and useful for its intended audience?              | Is the answer clear and useful (human usefulness rating)?                                | Usefulness                  |
-| Did it avoid making up facts, rules, or policies?               | Did it avoid inventing facts when evidence is missing?                                   | Hallucination / abstention  |
-| Did it respond quickly enough?                                  | Is retrieval and end-to-end latency within budget?                                       | Latency                     |
-| Did it stay safe?                                               | No leaks across collections, no prompt-injection compliance, no sensitive-data exposure. | Safety                      |
+| Generic question (any LLM app)                                | EKA equivalent                                                                                                                                       | Eval dimension              |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| Did it answer the user's question correctly?                  | Did it answer the user's question correctly from the uploaded documents?                                                                             | Answer correctness          |
+| Did it use the provided knowledge or context properly?        | Did it use the retrieved passages and cite them?                                                                                                     | Retrieval use, citations    |
+| Was the answer faithful to the retrieved or provided context? | Does every claim trace back to cited evidence?                                                                                                       | Faithfulness / groundedness |
+| Was it clear and useful for its intended audience?            | Is the answer clear and useful (human usefulness rating)?                                                                                            | Usefulness                  |
+| Did it avoid making up facts, rules, or policies?             | Did it avoid inventing facts when evidence is missing?                                                                                               | Hallucination / abstention  |
+| Did it respond quickly enough?                                | Is the time to find passages, and the total time to answer, within the agreed limit?                                                                 | Latency                     |
+| Did it stay safe?                                             | No content leaking between document collections, no obeying hidden instructions planted in documents (prompt injection), no sensitive data revealed. | Safety                      |
 
 ### 2.3 Application's building blocks
 
@@ -137,7 +406,7 @@ Each of these can fail independently, and each can be an eval target (Section 3)
 
 ## 3. What an application eval can target
 
-> **In plain words:** you can test one small part (the document finder), a chain of parts (find, then answer), or the whole product the way a user experiences it. Small-part tests tell you *where* the problem is; whole-product tests tell you *whether there is* a problem.
+> **In plain words:** you can test one small part (the document finder), a chain of parts (find, then answer), or the whole product the way a user experiences it. Small-part tests tell you _where_ the problem is; whole-product tests tell you _whether there is_ a problem.
 
 The "Failure Points / Target" diagram splits targets into three levels:
 
@@ -154,11 +423,11 @@ flowchart TD
     A --> A1[End-to-end behaviour, latency, cost, safety]
 ```
 
-| Level                  | What you test                                                        | Pro                                         | Con                                            |
-| ---------------------- | -------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
-| **Component**          | One part in isolation (e.g., the retriever against labelled chunks). | Fast, cheap, pinpoints the cause.           | Passing parts can still make a failing system. |
-| **Workflow**           | A multi-step path (e.g., the full RAG path or document ingestion).   | Catches hand-off bugs between steps.        | Harder to attribute a failure to one step.     |
-| **Entire application** | The product as a user sees it, including latency and safety.         | The only level that answers "does it work?" | Slowest, needs the richest dataset.            |
+| Level                  | What you test                                                        | Pro                                                                       | Con                                            |
+| ---------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Component**          | One part in isolation (e.g., the retriever against labelled chunks). | Fast, cheap, pinpoints the cause.                                         | Passing parts can still make a failing system. |
+| **Workflow**           | A multi-step path (e.g., the full RAG path or document ingestion).   | Catches problems that appear when one step passes its result to the next. | Harder to attribute a failure to one step.     |
+| **Entire application** | The product as a user sees it, including latency and safety.         | The only level that answers "does it work?"                               | Slowest, needs the richest dataset.            |
 
 **Recommended practice:** evaluate all three levels; use component evals to _diagnose_ and application evals to _decide_.
 
@@ -172,25 +441,25 @@ LLM application risk falls into three categories. Keep them separate when design
 
 **How a person would ask each question.** Use these everyday wordings when writing a rating sheet or briefing a reviewer.
 
-| Category | Technical name | How a human asks it |
-|---|---|---|
-| **Quality** | Correctness | "Is the answer actually right? If I checked the document myself, would it match?" |
-| | Relevance | "Did it answer what I asked, or did it wander off?" |
-| | Completeness | "I asked two things — did it answer both?" |
-| | Groundedness / faithfulness | "Can I find every claim in the passages it quoted?" |
-| | Hallucination | "Did it make anything up that isn't in the documents?" |
-| | Abstention | "When the documents don't have the answer, did it honestly say so?" |
-| | Citation accuracy | "Does the source it points to really say that?" |
-| | Helpfulness / usefulness | "Could I get my job done with this answer? Is it clear?" |
-| **Safety** | Toxicity | "Is any of it rude, abusive, or hateful?" |
-| | Harmful content | "Does it explain something dangerous or illegal?" |
-| | PII / data leakage | "Did it reveal private information, or content I'm not allowed to see?" |
-| | Prompt injection resistance | "If a document says 'ignore your rules', does the assistant still behave?" |
-| | Bias / fairness | "Does it treat different groups of people fairly?" |
-| **Operational** | Latency | "Did I get my answer quickly enough?" |
-| | Cost | "Is each answer cheap enough to run all day?" |
-| | Error rate | "How often does it just fail or time out?" |
-| | Latency under load | "Does it stay fast when many people use it at once?" |
+| Category        | Technical name              | How a human asks it                                                               |
+| --------------- | --------------------------- | --------------------------------------------------------------------------------- |
+| **Quality**     | Correctness                 | "Is the answer actually right? If I checked the document myself, would it match?" |
+|                 | Relevance                   | "Did it answer what I asked, or did it wander off?"                               |
+|                 | Completeness                | "I asked two things — did it answer both?"                                        |
+|                 | Groundedness / faithfulness | "Can I find every claim in the passages it quoted?"                               |
+|                 | Hallucination               | "Did it make anything up that isn't in the documents?"                            |
+|                 | Abstention                  | "When the documents don't have the answer, did it honestly say so?"               |
+|                 | Citation accuracy           | "Does the source it points to really say that?"                                   |
+|                 | Helpfulness / usefulness    | "Could I get my job done with this answer? Is it clear?"                          |
+| **Safety**      | Toxicity                    | "Is any of it rude, abusive, or hateful?"                                         |
+|                 | Harmful content             | "Does it explain something dangerous or illegal?"                                 |
+|                 | PII / data leakage          | "Did it reveal private information, or content I'm not allowed to see?"           |
+|                 | Prompt injection resistance | "If a document says 'ignore your rules', does the assistant still behave?"        |
+|                 | Bias / fairness             | "Does it treat different groups of people fairly?"                                |
+| **Operational** | Latency                     | "Did I get my answer quickly enough?"                                             |
+|                 | Cost                        | "Is each answer cheap enough to run all day?"                                     |
+|                 | Error rate                  | "How often does it just fail or time out?"                                        |
+|                 | Latency under load          | "Does it stay fast when many people use it at once?"                              |
 
 **Examples of a reviewer's one-line verdicts**
 
@@ -199,11 +468,11 @@ LLM application risk falls into three categories. Keep them separate when design
 - "Sounds confident but the source says something different — 1."
 - "Good: it said it couldn't find this in the documents instead of guessing."
 
-| Category                | The question                                     | Concerns                                                                                                | Is about…                            |
-| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| **Application quality** | "Is the answer any good?"                        | Correct, relevant, complete answers that do the job asked.                                              | The **content** of the answer.       |
-| **Safety**              | "Could the answer cause harm?"                   | No toxic/dangerous content, no bias, no leaking private data, no being tricked into breaking its rules. | The **harm** the answer could do.    |
-| **Operational**         | "Is it fast, cheap, and reliable enough to run?" | Responds quickly, costs acceptable money per answer, does not crash or fail under real traffic.         | The **system producing** the answer. |
+| Category                | The question                                                       | Concerns                                                                                                                                       | Is about…                                                |
+| ----------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Application quality** | "Is the answer right, and does it actually help?"                  | The answer is correct, stays on topic, covers everything that was asked, and helps the user get the job done.                                  | **What the answer says.**                                |
+| **Safety**              | "Could this answer hurt someone or leak something it shouldn't?"   | Nothing offensive or dangerous, no unfair treatment of people, no private data revealed, and it cannot be tricked into ignoring its own rules. | **Any harm** the answer could cause.                     |
+| **Operational**         | "Is it quick, affordable, and dependable enough to use every day?" | It replies quickly, each answer costs a reasonable amount, and it keeps working when many people use it.                                       | **How well the system runs** while producing the answer. |
 
 ```mermaid
 flowchart LR
@@ -287,7 +556,7 @@ The last column maps each criterion to EKA.
 
 ## 5. Why component evals are not enough
 
-> **In plain words:** checking each part separately is not enough. A student can pick the right page *and* write a neat, honest answer, yet still answer the wrong question from the wrong paragraph. You also have to test the whole thing together.
+> **In plain words:** checking each part separately is not enough. A student can pick the right page _and_ write a neat, honest answer, yet still answer the wrong question from the wrong paragraph. You also have to test the whole thing together.
 
 A RAG chatbot has two primary failure points.
 
@@ -315,14 +584,14 @@ Typical measures: faithfulness / groundedness, answer relevance, hallucination r
 The scenario (restated):
 
 1. Retrieval fetches **K = 5** documents. The document that really contains the answer is **#5 (last)**. Retrieval is "working" — the right document is in the set.
-2. The generator answers from document **#1** or **#2**, faithfully to _those_ documents. Generation is "working" — it is grounded in what it was given.
+2. The generator answers from document **#1** or **#2**, faithfully to _those_ documents. Generation is "working" — it is grounded in wha[Retriever K=5]
+   R --> D1[Doc 1]
+   R --> D2[Doc 2]t it was given.
 3. The final answer is **wrong**. Each part passed; the **system** failed.
 
 ```mermaid
 flowchart LR
-    Q[Question] --> R[Retriever K=5]
-    R --> D1[Doc 1]
-    R --> D2[Doc 2]
+    Q[Question] --> R
     R --> D3[Doc 3]
     R --> D4[Doc 4]
     R --> D5["Doc 5 ✔ has the answer"]
@@ -396,7 +665,7 @@ If the retriever had returned both A and B in the top 5, Recall@5 would be 1.0. 
 
 **EKA specifics**
 
-- **Current runner:** it computes `recallAt5` and MRR from the chunk IDs in the **returned citations** (gap G1), so it measures what the answer cited, not what the retriever fetched. A low value can come from the retriever, the similarity threshold (default 0.70, DEC-007), or the generator not citing a retrieved chunk. Until raw candidates are available (spec 011 OI-1), read it as _citation-based recall_.
+- **Current runner:** it computes `recallAt5` and MRR from the chunk IDs in the **returned citations**, so it measures what the answer cited, not what the retriever fetched. A low value can come from the retriever, the configured similarity threshold, or the generator not citing a retrieved chunk. DEC-007 approves 0.70, but the checked-in backend default is currently 0.30 unless overridden; restoring 0.70 is tracked in backlog G11. Until raw candidates are available (spec 011 OI-1), read it as _citation-based recall_.
 - **Threshold effect:** chunks below the similarity threshold are dropped before generation, so a threshold set too high lowers recall and produces insufficient-evidence answers. The existing 30-case reports show zero Recall@5 at 0.70 and are not human reviewed, so they are not evidence of retriever quality (DEC-010).
 - **Existing diagnostics:** spec 009 logs ranked candidates with scores and whether they met the threshold (no text). These help investigate individual misses today, but they are logs, not an aggregate metric.
 
@@ -423,16 +692,16 @@ flowchart TD
     NEW --> S3
 ```
 
-| Step                           | What you do                                                                                                                                                           | Key outputs                                                     | Common mistakes                                                      |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **1. Define task & target**    | State what the app must do and which level you are testing (component / workflow / application).                                                                      | One-paragraph task statement; target list.                      | Evaluating "the chatbot" without naming the failure point.           |
-| **2. Define success criteria** | Turn "good" into measurable pass conditions per risk category.                                                                                                        | Metric list with thresholds (marked _proposed_ until approved). | Inventing thresholds with no baseline.                               |
-| **3. Build a dataset**         | Collect representative questions, expected evidence/answers, and unanswerable and adversarial cases.                                                                  | Versioned dataset with provenance.                              | Using only easy, synthetic, or leaked questions.                     |
-| **4. Define an eval method**   | Choose how each metric is judged: code, human, LLM judge.                                                                                                             | Method per metric, with calibration plan for any LLM judge.     | Trusting an uncalibrated LLM judge.                                  |
-| **5. Run the model**           | Execute the system over the dataset with pinned versions.                                                                                                             | Raw per-case results.                                           | Not recording model/config/dataset versions.                         |
+| Step                           | What you do                                                                                                                                              | Key outputs                                                     | Common mistakes                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **1. Define task & target**    | State what the app must do and which level you are testing (component / workflow / application).                                                         | One-paragraph task statement; target list.                      | Evaluating "the chatbot" without naming the failure point.           |
+| **2. Define success criteria** | Turn "good" into measurable pass conditions per risk category.                                                                                           | Metric list with thresholds (marked _proposed_ until approved). | Inventing thresholds with no baseline.                               |
+| **3. Build a dataset**         | Collect representative questions, expected evidence/answers, and unanswerable and adversarial cases.                                                     | Versioned dataset with provenance.                              | Using only easy, synthetic, or leaked questions.                     |
+| **4. Define an eval method**   | Choose how each metric is judged: code, human, LLM judge.                                                                                                | Method per metric, with calibration plan for any LLM judge.     | Trusting an uncalibrated LLM judge.                                  |
+| **5. Run the model**           | Execute the system over the dataset with pinned versions.                                                                                                | Raw per-case results.                                           | Not recording model/config/dataset versions.                         |
 | **6. Evaluate the results**    | Score against criteria. If not good enough, **improve the model or the system**, then re-run from step 5 (this may include switching to a larger model). | Pass/fail per metric.                                           | Changing several things at once, so you cannot attribute the change. |
-| **7. Analyze the results**     | Slice by category, find failure clusters, inspect worst cases.                                                                                                        | Failure analysis and next actions.                              | Reading only the average.                                            |
-| **8. Deploy & monitor**        | Release, watch production signals. **If production failures occur, add them to the dataset and restart from step 3.**                                                 | Monitoring signals; new dataset cases.                          | Never feeding production failures back.                              |
+| **7. Analyze the results**     | Slice by category, find failure clusters, inspect worst cases.                                                                                           | Failure analysis and next actions.                              | Reading only the average.                                            |
+| **8. Deploy & monitor**        | Release, watch production signals. **If production failures occur, add them to the dataset and restart from step 3.**                                    | Monitoring signals; new dataset cases.                          | Never feeding production failures back.                              |
 
 **Two loops to remember**
 
@@ -445,13 +714,13 @@ flowchart TD
 
 An **eval method** is the mechanism that decides whether an output is good or not — the actual procedure that takes an output and produces a judgment about it. In the eval pipeline, step 4 chooses the method for each metric.
 
-| #   | Method                           | Who/what produces the verdict | Typical checks                                                                                                                                          | Strengths                                                       | Limits                                                      |
-| --- | -------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------- |
-| 1   | **Programmatic / deterministic** | Code                          | Exact match, regex, JSON schema validation, running the output (e.g., execute code or SQL) and comparing results against a rule or known correct answer | Fast, cheap, reproducible                                       | Works only where correctness is mechanically checkable      |
-| 2   | **Human**                        | A person                      | Rate, rank, or compare outputs directly                                                                                                                 | Gold standard for nuanced, subjective, or high-stakes judgments | Most expensive and slowest                                  |
-| 3   | **Model-graded (LLM-as-judge)**  | A strong LLM                  | Scores or ranks the output against a rubric; used where there is no single right answer but "good" can be described — helpfulness, tone, groundedness   | Scales subjective checks                                        | Needs a clear rubric and validation against human judgments |
+| #   | Method                           | Who/what produces the verdict | Typical checks                                                                                                                                          | Strengths                                                        | Limits                                                                   |
+| --- | -------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 1   | **Programmatic / deterministic** | Code                          | Exact match, regex, JSON schema validation, running the output (e.g., execute code or SQL) and comparing results against a rule or known correct answer | Fast, cheap, reproducible                                        | Works only when a computer can tell right from wrong by following a rule |
+| 2   | **Human**                        | A person                      | Rate, rank, or compare outputs directly                                                                                                                 | Most trusted for subtle, opinion-based, or high-stakes judgments | Most expensive and slowest                                               |
+| 3   | **Model-graded (LLM-as-judge)**  | A strong LLM                  | Scores or ranks the output against a rubric; used where there is no single right answer but "good" can be described — helpfulness, tone, groundedness   | Scales subjective checks                                         | Needs a clear rubric and validation against human judgments              |
 
-**Choosing a method.** Prefer the cheapest method that is trustworthy for the property being measured, and combine them:
+**Choosing a method.** Prefer the cheapest method that is trustworthy for the property being measured, and combine them. Four things push the choice: how many cases you must check (many cases favour code or a judge, because people do not scale), whether the result must be repeatable (a release gate in §6.4 needs code, since a judge's marks can vary), cost and speed, and how costly a wrong verdict would be (the higher the stakes, the more a person should be involved):
 
 ```mermaid
 flowchart TD
@@ -482,7 +751,7 @@ An LLM judge is a model too, so its verdict must be validated before it influenc
 
 Human and LLM-judge methods both need a **rubric**: written descriptions of what each score means, so two reviewers (or a reviewer and a judge) give the same score to the same answer. A Helpfulness rubric is a common example:
 
-| Score | Meaning                                            |
+| Score | Meaning                                                             |
 | ----- | ------------------------------------------------------------------- |
 | **5** | Fully answers the question, accurate and complete, appropriate tone |
 | **3** | Partially helpful — missing something or slightly off               |
@@ -681,7 +950,7 @@ Note that **retrieved IDs that are not gold are not automatically wrong** (e.g.,
 1. **Per-query table first.** Never report only the mean. Keep the table of gold IDs, retrieved IDs, found, and score.
 2. **Classify every miss** into one cause:
    - _Absent:_ the gold chunk is not in the candidates at all (indexing, embedding, wording, chunking, label error).
-   - _Below threshold:_ it was a candidate but filtered out by the similarity threshold (EKA default 0.70, DEC-007).
+   - _Below threshold:_ it was a candidate but filtered out by the configured similarity threshold (approved default 0.70; backend restoration pending in G11).
    - _Ranked below K:_ it was found but too low (ranking, K).
    - _Label error:_ the gold label is wrong or stale — fix the dataset, not the system.
 3. **Slice by category** (single-source, multi-source, paraphrased, unanswerable, adversarial) so a strong easy category does not hide a weak one.
@@ -793,7 +1062,7 @@ Run **after deployment**, on live production traffic, as real users interact wit
 
 **Why offline is not enough after deployment.** Three things a fixed dataset cannot cover:
 
-| Post-deployment problem          | What it means                                                | Examples                                                                                                                                                                                                                                                           |
+| Post-deployment problem          | What it means                                                | Examples                                                                                                                                                                                                                                                                          |
 | -------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Unanticipated inputs**         | Real users ask things nobody put in the dataset.             | Questions mixing Hindi and English; ambiguous half-questions; an angry rant with a real question buried inside; adversarial prompt injection; edge cases never considered                                                                                                         |
 | **Emergent / systemic failures** | Problems that only exist at scale, under load, or over time. | A retrieval index silently lagging its source documents; cost per conversation quietly tripling after a prompt change; a p99 latency tail frustrating a slice of users; a subtle bias visible only across thousands of conversations; degradation only under real concurrent load |
@@ -832,7 +1101,7 @@ With no answer key, correctness is approximated:
 
 ### 6.5 Building an online eval pipeline (detail for step 8)
 
-> **In plain words:** keep a careful record of every conversation turn (without slowing the assistant down or exposing private data), turn some of it into dashboard numbers (like thumbs-down rate or response time), have a judge score a *sample* of answers, and send an alert if a number crosses a line you set.
+> **In plain words:** keep a careful record of every conversation turn (without slowing the assistant down or exposing private data), turn some of it into dashboard numbers (like thumbs-down rate or response time), have a judge score a _sample_ of answers, and send an alert if a number crosses a line you set.
 
 #### Step 1 — Logging
 
@@ -937,7 +1206,7 @@ Verified against the backend repository (`evaluation/evaluate.mjs`, `evaluation/
 | Component (from the diagram) | In EKA today                                                          | Eval relevance                                             |
 | ---------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------- |
 | Prompt                       | Evidence/safety chat prompt in the backend                            | **High** — prompt versions must be compared (v1 vs v2).    |
-| Retriever                    | pgvector top-K with similarity threshold (default K=5, 0.70, DEC-007) | **High** — Recall@K, MRR on true candidates.               |
+| Retriever                    | pgvector top-K with similarity threshold (approved defaults K=5, 0.70; backend restoration pending in G11) | **High** — Recall@K, MRR on true candidates.               |
 | Reranker                     | None in the MVP                                                       | Not applicable now.                                        |
 | Query rewriter               | CRAG P3, disabled by default (DEC-010)                                | Evaluate only when CRAG is enabled.                        |
 | Embedding model              | Ollama / OpenAI, independently selectable (DEC-002)                   | High — changing it requires re-indexing and re-evaluation. |
@@ -1067,7 +1336,7 @@ Each run writes a machine-readable report and a short Markdown summary containin
 
 **Conflict to resolve before any online eval.** The recommended logging design stores the raw user message, retrieved context, and response text for every turn, plus feedback signals. Approved EKA rules prohibit this for the MVP:
 
-| Recommended logging field or signal                 | Current EKA rule                                                                                        |
+| Recommended logging field or signal            | Current EKA rule                                                                                        |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Raw message, response text, retrieved passages | DEC-008 (no conversation or answer storage); specs 005 and 009 (never log questions, passages, prompts) |
 | Thumbs up/down, escalation, rephrase           | Feedback APIs deferred (DEC-008; API contract)                                                          |

@@ -28,8 +28,8 @@ Status values: `Not started`, `Blocked` (names the blocker), `Done`. Nothing is 
 | EV20 | Add scheduled report-only run on a non-confidential corpus | Backend | CI/scheduler config | EV08, EV10 | FR-23 | Blocked: OI-6 |
 | EV21 | Update backend evaluation README: schema v2, metrics, methods, limitations, run steps | Backend | `evaluation/README.md` | EV05–EV11 | — | Blocked: EV05–EV11 |
 | EV22 | Run the full unit suite and a v1-compatibility regression run; record actual results | Backend | `evaluation/test/` | EV03–EV08 | AC-1, NFR-2 | Blocked: EV03–EV08 |
-| EV23 | Run the representative human-reviewed evaluation and record results in T18/T19 | All | foundation `tasks.md`, `backlog.md` | EV09, EV14, EV16, B06 | AC-13 | Blocked: B06 dataset and reviewers |
-| EV24 | Update backlog, plan, and task status to reflect verified work only | Specification | `backlog.md`, `plan.md` | all completed tasks | — | Not started |
+| EV23 | Run the representative human-reviewed evaluation and record results in T18/T19 | All | foundation `tasks.md`, [implementation backlog v2](../../docs/implementation/Implementation_Backlog_v2.md) | EV09, EV14, EV16, B06 | AC-13 | Blocked: B06 dataset and reviewers |
+| EV24 | Update backlog, plan, and task status to reflect verified work only | Specification | [implementation backlog v2](../../docs/implementation/Implementation_Backlog_v2.md), `plan.md` | all completed tasks | — | Not started |
 | EV25 | Record dataset-level metadata (version, hash, chunking/embedding configuration, reviewer/date) and warn on configuration mismatch; decide stable-label approach (OI-9) | Backend / Specification | `evaluation/lib/dataset.mjs`, `evaluation/README.md` | EV03, OI-9 | AC-18 | Blocked: OI-9 |
 | EV26 | Document golden-dataset authoring and results-analysis procedure in the backend evaluation README (aligned with guide §6.2–§6.3) | Backend | `evaluation/README.md` | EV10 | FR-6a | Blocked: EV10 |
 

@@ -3,7 +3,7 @@
 ## Software Requirements Specification (SRS)
 
 **Document ID:** EKA-SRS-001\
-**Version / status:** 1.1 / Aligned to approved decisions and implemented-flow records (2026-10-30)\
+**Version / status:** 1.2 / Requirements alignment reviewed 2026-11-06\
 **Prepared date:** 2026-10-09\
 **Audience:** Product owner, backend/frontend engineering, AI
 engineering, QA, security, operations\
@@ -13,8 +13,12 @@ engineering, QA, security, operations\
 recommended; "May" means optional.
 
 > **Important note:** This is the aligned working baseline for the
-> portfolio project. Approved decisions in `implementation/product-decisions.md`
-> take precedence; proposed targets remain non-commitments until evaluated.
+> portfolio project. Approved [product decisions](implementation/product-decisions.md)
+> take precedence; proposed targets remain non-commitments until reviewed
+> and approved. Requirements describe intended behavior, not proof of
+> implementation or verification. See the [PRD](Enterprise_Knowledge_Assistant_PRD_v1.md)
+> and [implementation backlog](implementation/Implementation_Backlog_v2.md)
+> for current status and outstanding work.
 
 ------------------------------------------------------------------------
 
@@ -25,14 +29,23 @@ upload and manage technical documents, ask natural-language questions,
 and receive answers grounded in retrieved source passages. The
 application uses retrieval-augmented generation (RAG) to retrieve
 relevant chunks before asking a language model to answer. Answers must
-include citations to the supporting documents and must communicate when
-available evidence is insufficient.
+include citations to supporting sources and must communicate when
+available evidence is insufficient. Internal citations identify
+authorized documents; the separately approved external-search exception
+has typed external citations under DEC-010.
 
 The project is intended to demonstrate production-minded AI engineering:
 ingestion pipelines, chunking and embeddings, authorization-scoped vector
 retrieval, corrective retrieval behind configuration, access control,
 evaluation, observability and cost awareness. Hybrid retrieval and reranking
 remain deferred by DEC-008.
+
+The core document and question-answering flows are implemented, but
+release readiness has not been demonstrated. Live Keycloak verification,
+representative human-reviewed evaluation and complete live end-to-end
+evidence remain outstanding; foundation tasks T18 and T19 are blocked.
+See the [foundation tasks](../specs/001-project-foundation/tasks.md) and
+the implementation backlog for evidence and limitations.
 
 ## 2. Goals and Success Measures
 
@@ -127,6 +140,12 @@ remain deferred by DEC-008.
                                       content.
   -----------------------------------------------------------------------
 
+These are product responsibilities, not a claim that every administrative
+interface exists. There is currently no administration UI or API for
+managing users, collections and grants, or an audit-viewing API; local
+setup uses SQL seed data. Security-event audit coverage is incomplete.
+These limitations do not remove FR-023 or other requirements below.
+
 ## 5. Assumptions and Constraints
 
 -   Initial deployment is a single environment for a portfolio/MVP
@@ -136,8 +155,8 @@ remain deferred by DEC-008.
 -   Keycloak is the OIDC provider for deployed authentication. Ollama and
     OpenAI are independently selectable for chat and embeddings; provider
     configuration remains externalized.
--   Kafka may be used for asynchronous ingestion, but a simpler queue or
-    background executor is acceptable for the first thin slice.
+-   Broker-based ingestion, including Kafka, is deferred by DEC-008.
+    The MVP uses a bounded background worker with persisted jobs.
 -   The system must not assume that similarity scores are calibrated
     probabilities of correctness.
 -   Document access permissions must be enforced during retrieval, not
@@ -150,15 +169,20 @@ remain deferred by DEC-008.
 **Question-answer flow:**\
 User → React web application → Spring Boot REST API →
 authentication/authorization → RAG orchestration → retriever (metadata
-filter + vector/keyword search + optional reranker) → prompt/context
+filter + semantic vector search) → prompt/context
 builder → LLM → answer with citations.
+
+Corrective RAG and its bounded external-search exception are described
+in §12. Hybrid retrieval and reranking remain deferred.
 
 **Document-ingestion flow:**\
 Upload → validation → text extraction → chunking → embeddings →
 PostgreSQL/pgvector indexing.
 
-PostgreSQL stores document metadata, chunks, permissions, conversation
-records (if enabled), feedback and operational status.
+PostgreSQL stores document metadata, extracted text, chunks, permissions
+and operational status. Original files are not retained (DEC-005).
+Conversation history and answer feedback are deferred (DEC-008); questions
+and answers are not persisted as conversation history in the MVP.
 
 **External dependencies:** identity provider or Spring Security
 authentication, LLM provider, embedding provider, PostgreSQL/pgvector,
@@ -166,7 +190,10 @@ and an observability backend where configured.
 
 ## 7. Functional Requirements
 
-FR-012 (hybrid retrieval), FR-013 (reranking), and FR-019 (feedback) remain retained historical requirements but are deferred by DEC-008. They are not current MVP behavior or API commitments.
+FR-012 (hybrid retrieval), FR-013 (reranking), FR-019 (feedback), and
+FR-020 (conversation history) are retained for future consideration
+but deferred by DEC-008. They are not current MVP behavior or API
+commitments.
 
   -------------------------------------------------------------------------------------------------------------
   ID          Requirement      Statement               Priority    Acceptance criteria   Verification
@@ -350,6 +377,13 @@ FR-012 (hybrid retrieval), FR-013 (reranking), and FR-019 (feedback) remain reta
                                code.                                                     
   -------------------------------------------------------------------------------------------------------------
 
+FR-014 and FR-015 describe the internal-evidence path. DEC-010 also
+permits a separate, dual-opt-in external-search fallback with typed
+external citations; its scope and safeguards in §12 and
+[specification 005](../specs/005-corrective-rag/spec.md) apply.
+Internal citation and authorization requirements still apply to internal
+sources and are not replaced by the external-source rules.
+
 ## 8. User Stories and Core Workflows
 
 ### US-01: Upload knowledge
@@ -362,17 +396,19 @@ its indexing status so that it becomes searchable.
     ingestion.
 -   Given ingestion succeeds, when status is refreshed, then the
     document is shown as Indexed.
--   Given extraction or embedding fails, then the document is marked
-    Failed and a safe diagnostic is available.
+-   If upload-time extraction rejects a file, the user receives a safe
+    error and no searchable document is created. If processing of an
+    accepted document fails, the document is marked Failed with a safe
+    diagnostic.
 
 ### US-02: Ask a question with evidence
 
 As an End User, I want to ask a natural-language question and inspect
 the sources so that I can verify the answer.
 
--   Given authorized indexed documents, when I submit a question, then
-    the system retrieves relevant chunks and returns an answer with
-    citations.
+-   Given authorized indexed documents, when I submit a question and
+    sufficient internal evidence is found, the system returns an answer
+    with citations to the retrieved sources.
 -   When evidence is insufficient, then the answer clearly communicates
     uncertainty rather than inventing a specific fact.
 -   When I open a citation, then I see the corresponding source metadata
@@ -520,9 +556,9 @@ that outdated documents do not dominate the answer.
   Collection              id, name, tenant_id,      Logical boundary for
                           access policy             document access.
 
-  Document                id, collection_id,        Store original file
-                          filename, content_type,   only if retention
-                          checksum, version,        policy permits.
+  Document                id, collection_id,        Original file is not
+                          filename, content_type,   stored (DEC-005).
+                          checksum, version,
                           status, created_by,       
                           created_at                
 
@@ -550,6 +586,12 @@ that outdated documents do not dominate the answer.
                           timestamp, correlation_id 
   -------------------------------------------------------------------------
 
+Data entries above describe the logical requirements, not a promise that
+every entity is stored today. Under DEC-005 original uploads are not
+stored; re-indexing uses stored extracted text. Query/Answer history and
+Feedback are deferred under DEC-008. Any future change to retention or
+conversation storage requires the appropriate decision and privacy review.
+
 ## 11. API Requirements (Proposed)
 
   ---------------------------------------------------------------------------------------
@@ -565,8 +607,8 @@ that outdated documents do not dominate the answer.
   `GET /api/v1/documents/{id}`            Get document            Permission on
                                           metadata/status         document/collection
 
-  `DELETE /api/v1/documents/{id}`         Delete document and     Knowledge Manager with
-                                          derived index data      delete permission
+  `DELETE /api/v1/documents/{id}`         Soft-delete document    Knowledge Manager with
+                                          and schedule purge      delete permission
 
   `POST /api/v1/documents/{id}/reindex`   Re-index document       Knowledge Manager
 
@@ -580,8 +622,11 @@ that outdated documents do not dominate the answer.
                                                                   operations-only
   ---------------------------------------------------------------------------------------
 
-API schemas, pagination limits, rate limits, error codes and idempotency
-semantics must be finalized during technical design.
+The approved [API contract](../specs/001-project-foundation/api-contract.md)
+defines current schemas, pagination limits, error codes and re-index
+semantics. Rate limiting and idempotency keys remain deferred. The
+frontend currently requests up to 100 documents without page navigation;
+the API supports pagination. See backlog P11.
 
 ## 12. Retrieval and RAG Behavior
 
@@ -596,20 +641,27 @@ semantics must be finalized during technical design.
 -   **External search:** only after an unsuccessful corrective internal
     retrieval, and only when deployment enablement plus
     `allowExternalSearch=true` are both present, one Tavily request may use
-    the user question. Results are untrusted; citations are typed
+    the original user question and fixed search options. No internal
+    passages, filenames, collection or user identifiers, or conversation
+    history are sent; question and provider bodies must not be logged or
+    persisted. Results are untrusted; citations are typed
     `EXTERNAL` with validated HTTPS URL, title, and snippet. Initial no-hit
-    and ambiguous branches do not cause external egress.
+    and ambiguous branches do not cause external egress; search failures
+    lead to insufficient evidence. See DEC-010 for the full safeguards.
 -   **Hybrid search and reranking:** deferred by DEC-008.
 -   **Context budget:** cap the number of chunks and total context
     tokens; prioritize relevant and non-duplicative passages.
--   **Citations:** preserve document ID, title, chunk ID and
-    page/section metadata through retrieval and generation.
+-   **Citations:** for internal sources, preserve document ID, title,
+    chunk ID and page/section metadata through retrieval and generation.
+    External citations are separately typed and do not contain internal
+    document identifiers.
 -   **Grounding:** instruct the model to answer from supplied evidence,
     cite claims and state when evidence is insufficient.
 -   **Prompt-injection resistance:** treat document text as untrusted
     data, not as instructions to override system policies.
--   **Evaluation:** compare vector-only, hybrid and
-    hybrid-plus-reranking configurations on the same labelled query set.
+-   **Evaluation:** evaluate the current vector-only baseline on a
+    labelled query set. Comparison with hybrid and reranked retrieval is
+    deferred with those capabilities (DEC-008).
 
 ## 13. Security and Abuse Cases
 
@@ -685,6 +737,11 @@ documented data-retention policy.
                                                   safe error.
   -----------------------------------------------------------------------
 
+AT-09 is deferred for the MVP under DEC-008 and the
+[foundation plan](../specs/001-project-foundation/plan.md#10a-technical-baseline-decisions-t01).
+The other scenarios remain applicable; their presence here does not mean
+they have all been verified.
+
 ## 15. Evaluation Plan
 
   -----------------------------------------------------------------------
@@ -715,6 +772,20 @@ documented data-retention policy.
                           available               
   -----------------------------------------------------------------------
 
+The existing runner computes its Recall@5 and MRR from returned citation
+IDs, not raw retrieval candidates; citation field completeness is not
+full citation validity. It reports mean latencies rather than the
+percentiles above. Representative labelled data and human review remain
+outstanding. These limitations do not change the evaluation requirements
+or establish that targets have been met. The expanded evaluation
+pipeline in [specification 011](../specs/011-evaluation-pipeline/spec.md)
+is a draft, not approved for implementation.
+
+The proposed G-02 target uses factual answers as its denominator, while
+the citation-validity measurement above uses individual citations. Report
+them separately and review their methods before using either as a release
+threshold.
+
 ## 16. Proposed Delivery Plan
 
   -----------------------------------------------------------------------
@@ -742,6 +813,11 @@ documented data-retention policy.
                           dataset                 instructions.
   -----------------------------------------------------------------------
 
+This is a historical proposed plan, not an implementation-status
+register. M3's hybrid and reranking comparison is deferred by DEC-008;
+baseline retrieval evaluation remains outstanding. Consult the current
+backlog and foundation task register for status.
+
 ## 17. Definition of Done
 
 -   Every Must requirement has at least one test or explicit
@@ -750,53 +826,39 @@ documented data-retention policy.
 -   The app handles ingestion and provider failures without silently
     claiming success.
 -   Answers show citations and support an insufficient-evidence path.
--   Evaluation dataset and benchmark results are version-controlled.
+-   Evaluation datasets and results are versioned and reproducible.
+    Confidential data must remain in an authorized, access-controlled
+    location outside source control; only non-sensitive material may be
+    committed.
 -   Secrets are excluded from source control; configuration examples use
     placeholders.
 -   Docker-based setup and teardown are documented and tested.
 -   Known limitations and out-of-scope capabilities are documented in
     the README.
 
-## 18. Open Decisions Before Implementation
+## 18. Decisions and Remaining Questions
 
-  -----------------------------------------------------------------------
-  Decision                Recommended default     Owner / status
-  ----------------------- ----------------------- -----------------------
-  LLM provider            Choose one hosted       Product/engineering ---
-                          provider first; keep    Open
-                          provider integration    
-                          configurable.           
+| Topic | Current status |
+|---|---|
+| Chat and embedding providers | DEC-002 approves independently selectable Ollama and OpenAI providers, with Ollama local and OpenAI deployed defaults. Models are configured per environment; changes to embedding provider or model require re-indexing. |
+| Models and vector store | The [foundation plan](../specs/001-project-foundation/plan.md#10a-technical-baseline-decisions-t01) records the approved starting models and isolated vector indexes. The owner approved the pg18 local image on 2026-11-06; compatibility and upgrade evidence remain pending (G12). Model choices are configurable; compatible dimensions and re-indexing remain necessary. |
+| Authentication | DEC-001 approves local development authentication and Keycloak OIDC for deployed use, including configured audience validation. Live Keycloak verification remains blocked (B04). |
+| Upload and retention | DEC-003, DEC-005 and DEC-006 approve the 10 MiB limit, no original-file storage, soft deletion and seven-day purge. |
+| Hybrid retrieval, reranking, feedback, conversation history and broker-based ingestion | Deferred by DEC-008. |
+| Corrective RAG and external search | DEC-010 approves P1–P4 with CRAG disabled by default and external search subject to dual opt-in and its safeguards. |
+| Retrieval defaults | DEC-007 specifies top-K 5 and similarity threshold 0.70; the owner confirmed retaining them on 2026-11-06. The backend currently defaults to 10 and 0.30 when not overridden; restoration and verification are tracked in G11. |
+| Performance and quality targets | Initial targets remain provisional; benchmark on representative data and documented hardware and review methodology before approving release or service-level thresholds. |
+| Evaluation pipeline | [Specification 011](../specs/011-evaluation-pipeline/spec.md) and OI-1–OI-12 await owner review; online evaluation requires a separate privacy decision. |
+| Product improvements | Administration UI/API, OCR, pagination and other proposed work require appropriate scope and approval; see the implementation backlog. |
 
-  Embedding model         Select a model          AI engineering --- Open
-                          compatible with chosen  
-                          vector dimensions and   
-                          language needs.         
-
-  Vector store            PostgreSQL + pgvector   Engineering ---
-                          for the first release.  Proposed
-
-  Keyword retrieval       Deferred by DEC-008.    Engineering ---
-                                                  Deferred
-
-  Reranker                Deferred by DEC-008.    AI engineering --- Deferred
-
-  Authentication          Spring Security local   Security/engineering
-                          development mode and    --- Approved
-                          Keycloak OIDC.
-
-  File size and retention 10 MiB, no original     Product/security ---
-                          file storage, soft      Approved
-                          delete and 7-day purge.
-
-  Conversation storage    Deferred by DEC-008.    Product/security --- Deferred
-                          requirements are        
-                          agreed.                 
-
-  Performance targets     Benchmark on a named    Engineering --- Open
-                          environment before      
-                          committing              
-                          service-level targets.  
-  -----------------------------------------------------------------------
+These summaries do not replace the decision records. Deployment-specific
+model and realm settings, and remaining evaluation questions, must not be
+treated as resolved simply because the baseline is recorded.
+On 2026-11-06 the owner approved immediate rejection of empty, corrupt or
+unextractable uploads without creating a document/job, and exclusion of
+re-indexed documents from retrieval while queued, processing or failed.
+The feature and API documents have been aligned; re-index lifecycle
+verification remains outstanding in backlog G13.
 
 ## 19. References and Further Reading
 
@@ -809,4 +871,4 @@ documented data-retention policy.
 
 ------------------------------------------------------------------------
 
-**END OF DOCUMENT --- Review and approve before implementation**
+**END OF DOCUMENT --- Requirements and decisions remain subject to their recorded approval and verification status.**

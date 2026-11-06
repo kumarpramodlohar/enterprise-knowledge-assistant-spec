@@ -58,8 +58,8 @@ All codes above are implemented in the backend (T04, T09, T11).
 ## Open items
 
 - Upload extracts and validates synchronously (empty → 400, corrupt → 422, renamed/spoofed → 415); chunking and embedding happen later in the worker (T10). Metadata limits: version/type ≤100 chars, ≤20 tags of ≤50 chars (T09, implemented).
-- Re-indexing keeps the previous chunks searchable until the replacement is committed; failed documents are retried through `reindex`. A repeated `DELETE` returns 404.
+- During re-indexing, a document is excluded from retrieval while `QUEUED`, `PROCESSING` or `FAILED`, even if previous chunk records are retained; it becomes eligible again only after successful indexing. Failed documents are retried through `reindex`. This behavior was approved by the owner on 2026-11-06; verification is tracked in backlog G13. A repeated `DELETE` returns 404.
 - Rate limiting and idempotency keys are deferred to API design follow-up.
 - Approved: page size default 20 (max 100) and question length max 2000.
-- Scanned (image-only) PDFs fail with `failureReason` `EMPTY` because OCR is deferred.
+- Scanned (image-only) PDFs without extractable text are rejected at upload with a safe validation error; no document/job or `failureReason` is created. OCR is deferred.
 - Chat does not persist questions or answers. Provider failures return safe `503` errors.

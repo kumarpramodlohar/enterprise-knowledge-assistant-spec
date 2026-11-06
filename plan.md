@@ -1,7 +1,7 @@
 # EKA Remaining Work Plan
 
 **Status date:** 2026-11-03  
-**Scope:** Close the remaining integration, evaluation, and release-readiness gaps in [backlog.md](./backlog.md). Existing backend and frontend implementations are treated as the baseline; this plan does not authorize new product scope or silently approve pending decisions.
+**Scope:** Close the remaining integration, evaluation, and release-readiness gaps in the [implementation backlog v2](./docs/implementation/Implementation_Backlog_v2.md). Existing backend and frontend implementations are treated as the baseline; this plan does not authorize new product scope or silently approve pending decisions.
 
 ## Goals
 

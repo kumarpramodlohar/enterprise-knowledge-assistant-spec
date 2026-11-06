@@ -31,7 +31,7 @@ Each feature distinguishes the React UI from the Spring Boot/Spring AI backend. 
 - **Safe error:** A user-readable message/code that does not disclose credentials, provider internals, stack traces, or unauthorized document content.
 - **MVP response mode:** Synchronous query/answer response. Document upload/ingestion may be asynchronous.
 - **Approved decisions:** Limits, providers, retention and tuning values come from [`implementation/product-decisions.md`](implementation/product-decisions.md) (DEC-001 to DEC-010): 10 MB upload limit; Ollama and OpenAI selectable independently for chat and embeddings in local/development, with Ollama defaults locally and OpenAI defaults when deployed; no original-file storage; soft delete with a 7-day purge; chunk 800/100 tokens; top-K 5; context budget 4000 tokens; evidence threshold 0.70 (tuned per provider); worker concurrency 2. DEC-010 approves CRAG P1–P4; public web search remains off unless both deployment configuration and a per-question user opt-in are set. The MVP evaluation gate remains incomplete.
-- **Still open:** exact model names and request quotas. OIDC provider is Keycloak (DEC-001).
+- **Model and deployment details:** Approved starting model names are recorded in the [foundation plan](../specs/001-project-foundation/plan.md#10a-technical-baseline-decisions-t01); model configuration is selectable. Request quotas remain open. OIDC provider is Keycloak (DEC-001). The approved retrieval defaults above differ from checked-in backend defaults until backlog G11 is completed.
 
 ## 2. Feature: Document Upload
 
@@ -117,7 +117,7 @@ INDEXED -> QUEUED (authorized re-index)
 |---|---|---|---|
 | IN-01 | An accepted supported file is queued. | A persisted job exists and the document is reported as `QUEUED` or `PROCESSING`; it is not yet returned as searchable. | Integration |
 | IN-02 | A valid supported file has extractable text. | Extraction produces non-empty normalized content; available page/section/source metadata is retained and traceable to the document. | Parser integration |
-| IN-03 | A supported file is empty, corrupt, or produces no searchable text. | The job/document becomes `FAILED` with a safe error code/summary; no active chunks/vectors are searchable. | Parser integration |
+| IN-03 | Upload-time extraction finds a supported file empty, corrupt, or without searchable text. | Reject the upload with a safe error; create no document or ingestion job and no searchable chunks/vectors. Failures after an accepted upload are reported as `FAILED` where applicable. | Upload and parser integration |
 | IN-04 | Text extraction succeeds. | Chunking applies the configured size and overlap; every chunk has a stable ID, parent document ID, deterministic ordering, and available source-location metadata. | Chunker unit + integration |
 | IN-05 | The embedding provider succeeds for all chunks. | Each active chunk has a vector of the configured dimension and records the embedding model/version; the document becomes `INDEXED` only after all required vectors and metadata are committed. | Spring AI adapter + DB integration |
 | IN-06 | The embedding provider times out or returns a transient failure. | The backend retries only within the configured limit; after retries are exhausted, the job is `FAILED` with a safe diagnostic and is not searchable. | Provider-failure integration |
@@ -126,6 +126,8 @@ INDEXED -> QUEUED (authorized re-index)
 | IN-09 | A user without document access requests status or retries by document ID. | The backend denies access without returning document metadata, failure details, or content. | Security integration |
 | IN-10 | The UI receives each supported backend status. | It renders distinct queued, processing, indexed, and failed states; failure includes the safe summary, and retry is shown only when permitted. | UI E2E |
 | IN-11 | A document is deleted. | It is excluded from retrieval, listings and citations immediately; after the 7-day retention period the purge job removes its chunks and vectors; deletion and purge are auditable. | Integration + security |
+
+The owner approved immediate rejection for invalid extracted content on 2026-11-06. Re-indexed documents are excluded from retrieval while queued, processing or failed; previous chunk records do not make them searchable. Verification remains tracked in backlog G13.
 
 ### Retry and failure rules
 
@@ -154,7 +156,7 @@ An End User's question is searched against a bounded set of relevant documents t
 - Combine mandatory authorization constraints with caller-selected filters in the pgvector search query. User filters may narrow the allowed scope but never expand it.
 - Retrieve at most configured top-K authorized candidates, subject to availability; exclude non-indexed, failed, deleting, or deleted documents.
 - Return passage IDs and trusted source metadata to the answer service; do not expose candidate content outside the authorized scope.
-- Use semantic similarity as baseline. Hybrid keyword/vector fusion and reranking are optional, configuration-controlled stages and require evaluation before being relied upon.
+- Use semantic similarity as baseline. Hybrid keyword/vector fusion and reranking are deferred by DEC-008; any future configurable stages require evaluation and an approved scope before implementation.
 - Treat vector similarity scores as ranking signals, not calibrated correctness probabilities. Apply an explicit configurable evidence policy before generation.
 
 ### Acceptance criteria
@@ -170,6 +172,8 @@ An End User's question is searched against a bounded set of relevant documents t
 | RT-07 | No eligible result exists or evidence falls below the configured policy. | Retrieval marks the evidence insufficient and the answer pipeline does not present a factual answer grounded in nonexistent/weak evidence. | Retrieval + answer integration |
 | RT-08 | A retrieval query is executed. | Access and metadata filters are applied in the database/vector-store query before passage text is made available to prompt construction. | Integration/security test |
 | RT-09 | Vector-only, hybrid, or reranked modes are configured for evaluation. | The selected mode is recorded with its configuration; optional hybrid/reranking changes can be compared on the same labelled dataset. | Evaluation test |
+
+RT-09's hybrid and reranking portions describe deferred future work, not an MVP implementation obligation under DEC-008.
 
 ### Retrieval response contract (logical)
 

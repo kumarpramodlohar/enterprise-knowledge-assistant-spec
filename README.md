@@ -85,7 +85,6 @@ The technology choices above represent the intended architecture. Approved decis
 enterprise-knowledge-assistant-spec/
 ├── README.md
 ├── AGENTS.md
-├── backlog.md
 ├── plan.md
 │
 ├── .github/
@@ -144,7 +143,7 @@ This was the original target structure. The current repository uses `docs/` for 
 | `.github/prompts/`      | Reusable GitHub Copilot prompts                                                     |
 | `.github/instructions/` | Path-specific Copilot instructions                                                  |
 | `templates/`            | Standardized document templates                                                     |
-| `backlog.md`            | Unresolved questions, planned work, and implementation progress                     |
+| `docs/implementation/Implementation_Backlog_v2.md` | Current backlog, unresolved questions, and implementation progress |
 | `plan.md`               | Ordered execution, dependencies, and verification criteria for remaining work       |
 
 The [Evaluation Developer Guide](docs/Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md) explains LLM evals and the proposed EKA evaluation pipeline; its draft requirements are in [specs/011-evaluation-pipeline](specs/011-evaluation-pipeline/spec.md).
@@ -291,7 +290,7 @@ To begin contributing to EKA:
 
 1. Review this README and `AGENTS.md`.
 2. Read the product requirements and approved decisions in `docs/`.
-3. Review `backlog.md` for unresolved questions and pending work.
+3. Review [the current backlog](docs/implementation/Implementation_Backlog_v2.md) for unresolved questions and pending work.
 4. Confirm that the intended feature scope and acceptance criteria are clear.
 5. Create or update the relevant feature specification under `specs/`.
 6. Generate an implementation plan and task breakdown.
@@ -301,4 +300,4 @@ To begin contributing to EKA:
 
 ## 14. Current Project Status
 
-The core MVP flows are implemented in the backend and frontend. Desktop/mobile Figma review is complete. Release readiness is still pending: live Keycloak verification and representative evaluation with human review remain blocked, so foundation tasks T18 and T19 remain blocked. See the [remaining backlog](backlog.md), [remaining work plan](plan.md), and [foundation task register](specs/001-project-foundation/tasks.md) for current status.
+The core MVP flows are implemented in the backend and frontend. Desktop/mobile Figma review is complete. Release readiness is still pending: live Keycloak verification and representative evaluation with human review remain blocked, so foundation tasks T18 and T19 remain blocked. See the [current backlog](docs/implementation/Implementation_Backlog_v2.md), [remaining work plan](plan.md), and [foundation task register](specs/001-project-foundation/tasks.md) for current status.

@@ -3,17 +3,17 @@
 ## Product Requirements Document (PRD)
 
 **Document ID:** EKA-PRD-001  
-**Version / status:** 1.1 / Aligned to approved decisions and implemented-flow records (2026-10-30)
+**Version / status:** 1.2 / Product requirements with implementation status reviewed 2026-11-06
 **Prepared date:** 2026-10-09  
 **Product:** Enterprise Knowledge Assistant (EKA)  
 **Canonical requirements source:** [`Enterprise_Knowledge_Assistant_Requirements_v1.md`](Enterprise_Knowledge_Assistant_Requirements_v1.md)  
 **Target release:** MVP v1
 
-> This PRD is a product-oriented view of the canonical requirements document, not a replacement for it. If details conflict, the canonical requirements document is authoritative. Proposed targets and assumptions remain subject to review and approval.
+> This PRD is a product-oriented view of the canonical requirements document, not a replacement for it. If details conflict, the canonical requirements and approved decisions are authoritative. Requirements describe intended behavior; implementation and verification status are summarized separately in §11. Proposed targets and assumptions remain subject to review and approval.
 
 ## 1. Product Summary
 
-Enterprise Knowledge Assistant helps people find answers in an authorized collection of technical documents. A user asks a question in natural language; the product retrieves relevant passages and returns an answer with citations so the user can inspect the evidence. When the collection does not contain adequate evidence, the product communicates that limitation instead of presenting an unsupported answer as fact.
+Enterprise Knowledge Assistant helps people find answers in an authorized collection of technical documents. A user asks a question in natural language; the product retrieves relevant passages and returns an answer with citations so the user can inspect the evidence. When the available evidence is inadequate, the product communicates that limitation instead of presenting an unsupported answer as fact. The approved, opt-in external-search exception is described in §5.
 
 Knowledge managers can upload and manage documents and monitor whether they are ready to search. The MVP focuses on a dependable, verifiable document-question-answer workflow, with access controls applied throughout ingestion, retrieval, and citation display.
 
@@ -39,7 +39,7 @@ The measures below are proposed MVP targets from the canonical requirements docu
 | Establish retrieval quality. | Measure Recall@5 and MRR on a labelled retrieval dataset and record a baseline. |
 | Make operation diagnosable. | Provide request correlation IDs, error logs, latency metrics, and token-usage metrics where available. |
 
-The product should also report p50/p95 end-to-end answer latency, separating retrieval latency from model generation. Establish a target after measuring a representative baseline; do not infer a service commitment from an unbenchmarked estimate.
+The product should also report p50/p95 end-to-end answer latency and retrieval latency separately. The canonical requirements set an initial p95 retrieval target of at most 1.5 seconds on a documented local/demo environment with up to 10,000 indexed chunks. An end-to-end target is to be set after measuring a representative baseline; neither is an established service commitment.
 
 ## 4. Personas
 
@@ -65,7 +65,7 @@ A privileged user responsible for managing roles, settings, and security-relevan
 
 - **Needs:** Control who can manage documents and access collections, configure approved system behavior, and review administrative or security events.
 - **Success looks like:** Restricted actions are denied unless permitted, configuration is externalized, and important actions are auditable.
-- **MVP capabilities:** Manage users/roles and system settings; inspect ingestion failures and audit events, subject to the implementation’s assigned administrative permissions.
+- **MVP responsibility:** Manage users/roles and system settings; inspect ingestion failures and audit events, subject to assigned administrative permissions. This describes the product need, not a claim that an administration screen or audit-viewing API exists today; see §11.
 
 ### Operator / Developer — operates the service
 
@@ -82,20 +82,20 @@ A person who supports the running application and diagnoses service health witho
 1. An authenticated End User opens the assistant and selects an authorized collection or applicable metadata filters.
 2. The user submits a non-empty natural-language question.
 3. EKA searches only content the user is authorized to access and applies the requested filters.
-4. EKA returns a grounded answer with citations to accessible source documents and available page/section or passage details.
+4. When sufficient internal evidence is found, EKA returns an answer with citations to accessible source documents and available page/section or passage details.
 5. If there is no adequate evidence, EKA clearly says so rather than inventing a factual answer.
 6. The user can inspect the cited source information.
 
 ### Optional corrective path
 
-The default answer flow remains internal-only. When corrective RAG is enabled, EKA may evaluate and refine internal evidence and make one same-scope retrieval retry. Public-web search is a bounded exception: it requires an operator-enabled Tavily integration and an unchecked per-question consent control. It occurs only after an unsuccessful internal corrective retry. Web results are visibly labelled as external sources and never contain internal document identifiers.
+The default answer flow remains internal-only. When corrective RAG is enabled, EKA may evaluate and refine internal evidence and make one same-scope retrieval retry. Public-web search is a bounded exception: it requires an operator-enabled Tavily integration and explicit per-question consent, which is unchecked by default. It occurs only after an unsuccessful internal corrective retry, not on initial no-hit or ambiguous branches. The user's question is sent to Tavily; internal passages, filenames, collection and user identifiers, and conversation history are not sent. Web results are untrusted and visibly labelled as external sources, with validated HTTPS links rather than internal document identifiers. See [DEC-010](implementation/product-decisions.md#dec-010-corrective-rag-crag-and-web-search) for the full safeguards.
 
 ### Core user journey: make knowledge searchable
 
 1. An authorized Knowledge Manager uploads a supported PDF, DOCX, TXT, or Markdown document within configured limits.
 2. EKA validates the file and exposes its ingestion state: queued, processing, indexed, or failed.
 3. On success, extracted content is searchable and traceable to its source metadata.
-4. On failure, the manager sees a safe error summary and can retry or re-index without creating duplicate active chunks.
+4. On failure, the manager sees a safe error summary. Where retry or re-index is appropriate, it must not create duplicate active chunks; invalid content may require correction and re-upload.
 5. An authorized manager can delete a document; after deletion completes, its content is excluded from retrieval.
 
 ## 6. MVP Boundaries
@@ -107,9 +107,9 @@ The default answer flow remains internal-only. When corrective RAG is enabled, E
 - Text extraction, configurable chunking, embedding generation, indexing, and visible ingestion status.
 - Safe, idempotent retries; re-indexing without duplicate active chunks; authorized document listing, inspection, and deletion.
 - Natural-language question submission and semantic retrieval with configurable top-K and server-enforced access and metadata filters.
-- Grounded answers with valid citations to authorized indexed sources, plus an insufficient-evidence response.
+- Grounded answers with valid citations to authorized indexed sources, plus an insufficient-evidence response; the separately approved external-search path uses typed external citations.
 - Optional disabled-by-default corrective RAG and dual-opt-in external search as defined by DEC-010; external citations are typed and visibly distinct.
-- Context and provider timeouts with bounded retries; safe errors, health checks, structured logs, correlation IDs, and relevant usage/latency metrics where available.
+- Context limits and provider timeouts with bounded retries; safe errors, health checks, structured logs, correlation IDs, and relevant usage/latency metrics where available.
 - A repeatable, versioned evaluation process that records dataset/configuration details and retrieval and answer-quality measures.
 - Documented local development using Docker-based setup and automated tests for required behavior.
 
@@ -134,6 +134,8 @@ These are in the source requirements as lower priority and were deferred in [`im
 - Complex workflow approvals, billing, and multi-region disaster recovery.
 - A production service-level commitment before representative benchmarking.
 
+Other product improvements, including an administration interface, OCR, document-library pagination and streaming answers, are proposals in the [implementation backlog](implementation/Implementation_Backlog_v2.md), not approved MVP commitments.
+
 ## 7. Product Requirements and Acceptance
 
 | Priority | Product requirement | Acceptance outcome |
@@ -149,7 +151,7 @@ These are in the source requirements as lower priority and were deferred in [`im
 | Must | Provide repeatable quality evaluation and operational diagnostics. | Evaluation runs record dataset and configuration/model versions; service diagnostics include correlation IDs and avoid logging secrets or full document content by default. |
 | Deferred | Hybrid search, reranking and answer feedback (DEC-008). | Revisit after the baseline evaluation. |
 
-Detailed functional, security, data, API, and non-functional requirements remain in the canonical requirements document.
+The answer and citation rows describe the internal-evidence path; the bounded external-search exception and its separate citation rules are in §5. Detailed functional, security, data, API, and non-functional requirements remain in the canonical requirements document.
 
 ## 8. UX and Trust Principles
 
@@ -165,13 +167,15 @@ Detailed functional, security, data, API, and non-functional requirements remain
 Evaluate each candidate release on the same versioned dataset and report:
 
 - **Retrieval:** Recall@5 and MRR or nDCG@5 on 30–50 questions with known relevant source chunks.
-- **Citation validity:** Percentage of citations resolving to real, authorized indexed chunks.
+- **Citation validity:** Measure the percentage of citations resolving to real, authorized indexed chunks. Separately report the percentage of factual answers with valid source citations for comparison with the proposed 95% goal; the denominators are different.
 - **Groundedness and usefulness:** Human review using a documented rubric (correct, partially correct, incorrect); model-assisted judging must not be the sole measure.
 - **Latency:** p50/p95 retrieval and end-to-end answer latency, reported separately.
 - **Cost:** Provider token usage and cost per query where available.
 - **Security:** Authorization and tenant-isolation scenarios, including tampered filters and attempts to access another user’s documents.
 
 Report results alongside dataset version and model/retrieval configuration. The proposed 80% supported/relevant answer rate and 95% citation validity are initial targets that should be reviewed against the evaluation method and test corpus.
+
+**Current limitation:** The existing runner uses returned citation IDs for its Recall@5 and MRR calculations; these are not measurements over the raw retrieved candidates. It reports citation field completeness, not a full citation-validity score, and mean latency rather than the percentiles above. A representative labelled dataset and human review have not yet been supplied. The broader evaluation pipeline in [specification 011](../specs/011-evaluation-pipeline/spec.md) is a draft and has not been approved for implementation. These limitations do not remove the measurement goals above.
 
 ## 10. Risks, Assumptions, and Open Decisions
 
@@ -195,6 +199,25 @@ Report results alongside dataset version and model/retrieval configuration. The 
 
 ## 11. Release Readiness
 
+### Current implementation and verification status
+
+The following is a product-level summary of the code and project records reviewed on 2026-11-06. An implemented feature is not automatically verified against every acceptance criterion. Detailed evidence, remaining work, and historical test results are maintained in the [implementation backlog](implementation/Implementation_Backlog_v2.md) and [foundation tasks](../specs/001-project-foundation/tasks.md).
+
+| Area | What exists today | Remaining limitation or verification |
+|---|---|---|
+| Sign-in and access | Local sign-in and OIDC flows, server-side collection permissions, and first-login user provisioning are implemented. | A live Keycloak sign-in and access check remains blocked (B04). |
+| Documents | Upload, supported text extraction, ingestion status, re-index, soft delete, and scheduled purge are implemented. Original files are not retained; re-index uses extracted text. | Scanned PDFs have no OCR; the document list requests at most 100 records without page navigation. A safe full re-embedding path after model changes is proposed (P5, P7, P11). |
+| Answers and citations | Scoped semantic retrieval, insufficient-evidence responses, internal citations, and disabled-by-default corrective RAG with optional external citations are implemented. | Representative retrieval and answer quality remain unverified. External search follows the separate consent and privacy rules in §5. |
+| Administration and operations | Configuration is externalized; health, correlation IDs, and document re-index/delete/purge audit records exist. Local setup uses SQL seed data for collections and grants. | No administration UI or API for managing users, collections, and grants, or audit-viewing API is available. Security audit coverage and request/error/latency and provider-usage metrics remain incomplete (G1–G3, P1). |
+| Evaluation and end-to-end verification | An evaluation runner, backend integration tests, and a frontend browser test exist. | The browser test mocks the API; it does not verify the full live upload-to-citation flow. Representative evaluation and human review, complete end-to-end evidence, and release readiness remain pending (B06, B09, G10). |
+| Retrieval and local database defaults | DEC-007 specifies top-K 5 and similarity threshold 0.70; the owner confirmed retaining them. The owner approved pg18 as the local PostgreSQL/pgvector baseline on 2026-11-06. | Checked-in backend retrieval defaults are currently 10 and 0.30 unless overridden; restoring 5 and 0.70 is pending (G11). pg18 setup and migration evidence remains pending (G12). |
+
+The owner approved excluding a document from retrieval while re-indexing is queued, processing or failed, even when old chunks are retained. The API contract is aligned; full lifecycle verification remains pending (G13).
+
+Foundation tasks T18 and T19 remain blocked. The project is not yet demonstrated to be release-ready or production-ready.
+
+### Release-review criteria
+
 MVP is ready for release review when:
 
 - Every Must requirement has a test or explicit verification artifact.
@@ -203,6 +226,7 @@ MVP is ready for release review when:
 - Insufficient evidence and provider/ingestion failures are handled without silently claiming success.
 - Evaluation data and benchmark results are versioned and reproducible.
 - Secrets are externalized, logs avoid raw credentials and full document content by default, and retention behavior is documented.
+- Confidential evaluation datasets and reports are kept in an authorized, access-controlled location outside source control.
 - Docker-based setup instructions are reproducible, and known limitations and out-of-scope capabilities are documented.
 
 ## 12. Source Traceability
@@ -217,4 +241,4 @@ This PRD derives from [`Enterprise_Knowledge_Assistant_Requirements_v1.md`](Ente
 | Product requirements | Functional Requirements; Acceptance Test Scenarios |
 | UX, trust, and risks | Retrieval and RAG Behavior; Security and Abuse Cases |
 | Quality and evaluation | Non-Functional Requirements; Evaluation Plan |
-| Release readiness and open decisions | Definition of Done; Open Decisions Before Implementation |
+| Release readiness and open decisions | Definition of Done; Decisions and Remaining Questions |

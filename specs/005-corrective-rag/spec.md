@@ -49,7 +49,7 @@ P1–P4 are approved. P4 changes the out-of-scope public-web rule only for the b
 
 - FR-1: When enabled, evaluate at most five authorized top-K passages against the question. Aggregate passage verdicts deterministically: any `CORRECT` passage makes the action `CORRECT`; otherwise any `AMBIGUOUS` passage makes it `AMBIGUOUS`; otherwise it is `INCORRECT`.
 - FR-2: On `CORRECT`, refine passages and generate from refined internal evidence.
-- FR-3: On `INCORRECT`, rewrite the query at most once and retry internal retrieval with the exact same server-authorized collection scope and metadata filters. Re-evaluate; if no `CORRECT` passage results, return insufficient evidence. No external search is performed.
+- FR-3: On `INCORRECT`, rewrite the query at most once and retry internal retrieval with the exact same server-authorized collection scope and metadata filters. Re-evaluate; if no `CORRECT` passage results, return insufficient evidence unless the separately approved external-search path meets all conditions in FR-11–FR-17.
 - FR-4: On `AMBIGUOUS`, return insufficient evidence without generation.
 - FR-5: Every step runs after server-side authorization; evaluator and rewrite prompts only receive authorized passages and the user question.
 - FR-6: Bound processing to five evaluated passages, one rewrite, and a configurable 60-second total CRAG-stage timeout. On evaluator, refiner, or rewrite provider/format failure, use the original MVP threshold-selected passages and original question.

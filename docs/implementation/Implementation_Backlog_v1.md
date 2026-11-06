@@ -11,7 +11,7 @@
 **Product requirements:** [`../Enterprise_Knowledge_Assistant_PRD_v1.md`](../Enterprise_Knowledge_Assistant_PRD_v1.md)  
 **Canonical requirements:** [`../Enterprise_Knowledge_Assistant_Requirements_v1.md`](../Enterprise_Knowledge_Assistant_Requirements_v1.md)
 
-> This is the original dependency-ordered planning backlog, not the current implementation-status register. For current status, use `specs/001-project-foundation/tasks.md`, feature task files 004–010, the API contract, and approved decisions.
+> This is the original dependency-ordered planning backlog, not the current implementation-status register. Its release gates remain incomplete. For outstanding work use [Implementation Backlog v2](Implementation_Backlog_v2.md); for detailed evidence use the [foundation task register](../../specs/001-project-foundation/tasks.md), feature task files, the API contract, and approved decisions.
 
 ## 1. How to Use This Backlog
 

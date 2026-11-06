@@ -159,14 +159,14 @@ Do not treat the proposed answer-quality, citation, or latency values in the sou
 
 ## 10a. Technical Baseline Decisions (T01)
 
-Recorded 2026-10-11. All rows below are approved by the project owner (models, PostgreSQL version and API limits approved 2026-10-11).
+Recorded 2026-10-11. All rows below are approved by the project owner (models, PostgreSQL version and API limits approved 2026-10-11). The PostgreSQL image baseline was changed by the owner on 2026-11-06, as noted below.
 
 | Topic | Status | Baseline |
 |---|---|---|
 | Spring Boot / Spring AI | Decided | Keep Spring Boot 4.1.1 and Spring AI 2.0.1 with Java 21 (the README's "3.x" is outdated). |
 | Compose ownership | Decided | Backend repository owns `compose.yaml`; it runs PostgreSQL/pgvector only. |
 | Migrations | Decided | Flyway, versioned SQL in `src/main/resources/db/migration`. |
-| PostgreSQL / pgvector | Decided | `pgvector/pgvector:pg17`; default host port 5433 to avoid clashing with a local PostgreSQL. |
+| PostgreSQL / pgvector | Decided; updated 2026-11-06 | `pgvector/pgvector:pg18`; default host port 5433. This replaces the pg17 starting baseline approved on 2026-10-11. The owner approved the pg18 baseline on 2026-11-06; compatibility, migration and clean-setup evidence for pg18 remain to be verified. Do not reuse a pg17 data volume without a verified major-version upgrade procedure. |
 | Vector tables | Decided | Isolated embedding indexes: `vector_store_ollama` (768) and `vector_store_openai` (1536); entry id equals `document_chunks.id`. |
 | Local models | Decided | Ollama `llama3.1:8b` chat, `nomic-embed-text` embeddings. |
 | Deployed models | Decided | OpenAI `gpt-4o-mini` chat, `text-embedding-3-small` embeddings. |
