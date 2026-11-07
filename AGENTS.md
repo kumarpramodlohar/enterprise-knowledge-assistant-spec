@@ -2,13 +2,14 @@
 
 ## Project Repositories
 
-This project is maintained across three separate Git repositories.
+This project is maintained across four separate Git repositories.
 
 | Repository    | Relative Path                                | Responsibility                                                                  |
 | ------------- | -------------------------------------------- | ------------------------------------------------------------------------------- |
 | Specification | `./enterprise-knowledge-assistant-spec/`     | Requirements, architecture, decisions, feature specifications, plans, and tasks |
 | Backend       | `./enterprise-knowledge-assistant-backend/`  | Java 21, Spring Boot, Spring AI, REST APIs, RAG pipeline, and persistence       |
 | Frontend      | `./enterprise-knowledge-assistant-frontend/` | React, TypeScript, Vite, UI components, and frontend API integration            |
+| Auth          | `./enterprise-knowledge-auth/`               | Planned Go service for identity provisioning, roles, grants, and policy decisions |
 
 ## Instructions for Copilot
 
@@ -20,6 +21,7 @@ This project is maintained across three separate Git repositories.
 6. If a required repository is not available, ask the user to open the appropriate repository or workspace. Do not invent file contents or implementation status.
 7. Keep changes within the requested repository unless cross-repository changes are explicitly required.
 8. Do not modify approved architecture or product decisions without explicit authorization.
+9. When working on the auth service, inspect its repository and the auth extraction specification, security decisions, and API contracts. Keep backend authorization enforcement in place until the replacement and cutover are approved and verified.
 
 ## Mandatory Spec-Driven Development Workflow
 

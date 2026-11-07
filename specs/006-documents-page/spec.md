@@ -1,6 +1,6 @@
 # 006 Documents Page — Specification
 
-**Status:** Draft for review; implementation and desktop/mobile visual verification completed (2026-11-03).
+**Status:** Implemented and verified for DEC-012 additions (2026-11-07).
 **Design source:** Figma file `Car Rental Company Dashboard UI` — EKA · Documents frame (`2508:23218`) and EKA · Mobile Documents frame (`2508:24558`).
 **Related:** `specs/001-project-foundation` (FR-01–FR-05, AC-01–AC-07, AC-14), DEC-003–DEC-006, DEC-008, API Contract v1, backlog EKA-14.
 
@@ -10,12 +10,13 @@ Give authorized users a clear, responsive place to upload documents and review t
 
 ## 2. Scope and constraints
 
-- Frontend-only page redesign in the existing `/documents` route.
+- Extend the existing `/documents` UI and document-list API, keeping the route and established EKA design.
 - Keep existing supported upload metadata, collection scoping, retry/re-index, delete, and status refresh behavior.
 - Use only permitted documents and manageable collection IDs returned by `/me`; the backend remains authoritative for every operation.
-- Do not add global filename search, collection names, or aggregate status APIs. The current contract does not provide them.
+- Do not add global cross-collection filename search, collection names, or aggregate status APIs. Search remains constrained to documents the caller can read.
 - Show status counts for the currently displayed result set and label them accordingly; show the server's `totalItems` separately.
 - Do not add document preview/download or conversation/history behavior.
+- Preserve the approved single-workspace product, existing EKA visual design, and collection-ID display (DEC-011).
 
 ## 3. Functional requirements
 
@@ -28,6 +29,10 @@ Give authorized users a clear, responsive place to upload documents and review t
 - FR-7: Refresh after upload/re-index/delete and keep clear loading, empty, success, and safe error states.
 - FR-8: Preserve keyboard operation and responsive behavior; on narrow screens, present each document as a readable card rather than a compressed table.
 - FR-9: Automatically refresh while listed documents are queued or processing, at a bounded cadence; stop automatic refresh after a bounded window and leave manual refresh available.
+- FR-10: Provide a server-side filename search that matches a literal substring case-insensitively. Combine it with collection/status filters and apply authorization before returning results. Ignore a blank search value and reject search strings longer than 200 characters.
+- FR-11: Provide pagination controls using 20 results per page. Use the API's `page`, `size`, and `totalItems` values; reset to page 0 when search or filters change.
+- FR-12: Provide an Upload navigation item that opens the existing upload form on the Documents route; do not create a separate upload page.
+- FR-13: Disable Retry/Re-index and Delete for documents in `QUEUED` or `PROCESSING` state. The backend must enforce the same restriction and return HTTP 409 `DOCUMENT_BUSY` for an authorized attempt while processing. Authorization checks must happen before the current-state response so inaccessible resources remain indistinguishable from missing resources.
 
 ## 4. Security and privacy
 
@@ -46,9 +51,13 @@ Give authorized users a clear, responsive place to upload documents and review t
 - AC-7: The Figma hierarchy and visual language are reflected without using temporary Figma asset URLs at runtime.
 - AC-8: Pending ingestion states trigger refreshes at most every five seconds for no more than twelve attempts; polling stops when no visible document is queued/processing, and manual refresh remains available.
 - AC-9: Details show only metadata from the authorized document list response and do not expose original file contents or download actions.
+- AC-10: Filename search is a case-insensitive literal substring match, composed with collection/status filters and restricted to the caller's readable collections. SQL wildcard characters in input are treated literally. Blank search returns unfiltered results; values over 200 characters return `400 VALIDATION_FAILED`.
+- AC-11: The list requests 20 items per page by default from the UI; Previous/Next controls reflect `page`, `size`, and `totalItems`, and changing the search or filters returns to page 0.
+- AC-12: The Upload navigation item opens the existing upload form on `/documents`; closing the form or completing an upload returns to the Documents view without leaving the upload form unintentionally open.
+- AC-13: Retry/Re-index and Delete are disabled for queued/processing documents in both responsive layouts. Direct authorized API calls in those states return `409 DOCUMENT_BUSY` and do not change document/job state or audit history. Inaccessible resources still return 404.
 
 ## 6. Out of scope and open decisions
 
-- Global filename search, collection display names, bulk actions, server-side summary counts, and pagination controls beyond the existing first 100 results.
+- Collection display names, bulk actions, and server-side summary counts remain out of scope. Search and pagination are included by DEC-012.
 - Polling uses a 5-second interval with a maximum of 12 attempts per selected collection/status filter; users can continue with manual refresh after the automatic window ends.
 - Exact visual content values shown in Figma are illustrative; the UI must use API data and specification-approved copy.

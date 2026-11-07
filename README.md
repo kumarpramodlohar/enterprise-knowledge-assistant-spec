@@ -19,8 +19,11 @@ Application source code lives in separate backend and frontend repositories.
 | `enterprise-knowledge-assistant-spec`     | Requirements, product decisions, architecture, feature specifications, plans, tasks, and agent instructions               |
 | `enterprise-knowledge-assistant-backend`  | REST APIs, authentication, document ingestion, embeddings, retrieval, RAG orchestration, persistence, and backend testing |
 | `enterprise-knowledge-assistant-frontend` | React UI, document management, chat interface, citations, and frontend testing                                            |
+| `enterprise-knowledge-auth` (planned)     | Go service for identity provisioning, application roles/grants, and policy decisions; repository has a README but no implementation |
 
 Repository URLs will be added after the repositories are created.
+
+The current backend remains responsible for authentication and authorization until the planned extraction is designed, approved, implemented, and verified. Keycloak remains the identity provider; the backend must retain server-side enforcement. See [service extraction specification](specs/013-auth-service-extraction/spec.md).
 
 ## 3. Product Vision
 

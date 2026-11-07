@@ -3,6 +3,8 @@
 **Status:** Draft for review. Keycloak, token policy, and audience-validation decisions are recorded in DEC-001. Frontend and backend implementation is delivered; end-to-end verification against a live Keycloak login is pending (see tasks).
 **Related decisions:** DEC-001, DEC-006 audit expectations; specs/001 FR-01, AC-01; specs/002 login page.
 
+**Future extraction:** The owner selected a Go auth-service boundary in DEC-013; [spec 013](../013-auth-service-extraction/spec.md) tracks pending design and migration. This document describes the current implementation and remains in force until an approved cutover.
+
 ## Problem
 Deployed environments must authenticate users through the company identity provider instead of local passwords.
 
