@@ -1,7 +1,13 @@
 # 013 Authentication and Authorization Service Extraction — Plan
 
-**Status:** Draft; owner selected the target boundary and initial design directions, but detailed design and cutover are not approved.
+**Status:** Draft; owner selected the target boundary and initial design directions. Independent detailed-design review and separate cutover approval remain pending.
 **Specification:** [spec.md](./spec.md)
+
+**Detailed design review package:** [design-review.md](./design-review.md) (draft; independent human security/architecture review pending).
+
+The package now includes isolated, synthetic-tested [guard](./review-guard-prototype.sql) and [manifest](./review-manifest-prototype.sql) prototypes. The owner selected separate forward and reverse migration identities, database-enforced reviewed manifests, mandatory database-backed audit and an independent failure-reporting channel. The manifest prototype covers simplified synthetic role and grant operations and is not integrated with the guard; neither implements the independent channel or is a production migration or a completed privilege, audit, reverse-copy, deployment, or review design. A02 remains open, but independent human review is no longer an implementation prerequisite.
+
+The owner selected exact run-specific manifest checks, explicit failure when independent alert delivery cannot be confirmed, strict API defaults conditional on compatibility verification, and the standard Go/tooling direction. Develop and test the Go service while continuing the detailed design; unfinished prototypes are not deployment-ready. Production platform, providers, owners and operational thresholds remain deployment prerequisites, and cutover requires separate approval.
 
 ## 1. Boundaries
 
@@ -13,7 +19,7 @@ Backend authorization is fresh per protected operation without an authorization-
 
 Initially retain direct Keycloak PKCE browser sign-in, the Java `/api/v1/me` contract, and local Basic sign-in. Migration uses a single policy authority at each stage, reconciliation, a rollback rehearsal and separate cutover approval. New administration UI/API and expanded audit-event features are deferred; existing required audit behavior is retained.
 
-This is a target architecture, not current behavior. No gateway, new credential format, specific policy engine, detailed service contract, certificate lifecycle, or migration mechanism has been approved.
+This is a target architecture, not current behavior. The owner selected the internal API shapes, transport, core migration direction and other details below; the complete contract, concrete database mechanics and operational procedures remain to be independently reviewed. No gateway, new credential format or specific policy engine has been selected.
 
 ### Further owner-selected directions
 
@@ -70,14 +76,14 @@ The owner selected the following directions; they are not a completed detailed d
 - Document forward and reverse migration runbooks with a named operator and independent reviewer, verified backup and restore, freeze and drain, evidence-backed mapping, complete reconciliation, rollback rehearsal and post-switch enforcement checks. An authority switch requires separate approval; conflicts and emergency revocation follow the selected safeguards.
 - Specify strict bounded input validation against existing identities and issuer configuration, reject malformed, duplicate, unknown and inconsistent fields, and test complete, revision-consistent scopes. Inventory protected-operation checkpoints and preserve `/api/v1/me` while coordinating the planned chat 403 and authorization 503.
 - Explicitly configure the approved Keycloak issuer and backend audience; restrict local identity and development CA use to local development. Preserve required audit behavior and ownership until a transition is designed, never silently drop mandatory records, and keep sensitive data out of operational logs.
-- Obtain documented independent human security and architecture review of the complete contract, threat model, database grants and SQL, certificate and key operations, migration/rollback and test strategy before design approval and implementation. Unresolved high-risk issues block approval; reviewer and platform are not yet identified.
-- For A03, propose Go module path `github.com/kumarpramodlohar/enterprise-knowledge-auth`, standard Go formatting, tests and vet, and CI appropriate to the actual platform. Verify a supported Go version and document libraries, layout and CI before implementation; the installed local toolchain does not establish project support.
+- The owner removed independent human security and architecture review as a prerequisite to implementation. Pramod was named as an architect reviewer, but independence, scope, findings and evidence have not been established; do not claim a review occurred. Continue addressing security and architecture risks and documenting actual evidence; the platform is undecided.
+- For A03, the auth repository has a Go module, pinned PostgreSQL driver and GitHub Actions workflow for formatting, tests, vet and package builds. Verify deployment compatibility, dependency review, production configuration, migration tooling and CI execution; the installed local toolchain does not establish deployment support.
 
 Endpoint validation limits, configured page-size rules and scope-limit enforcement, trigger and snapshot mechanics, privacy-safe cursor binding, secret management, rotation and error mapping, exact mTLS identity/certificate procedures, database grants, operation boundaries and migration runbook still need specification and security review. Owner selection does not complete A02.
 
 ## 2. Current implementation inventory
 
-Paths are relative to the project workspace; the three existing repositories are siblings.
+Paths are relative to the project workspace; the specification, backend, frontend and auth repositories are siblings when available.
 
 | Surface | Existing evidence and responsibility | Migration consideration |
 |---|---|---|
@@ -90,6 +96,8 @@ Paths are relative to the project workspace; the three existing repositories are
 
 Verify paths and repository state again before implementation; this inventory is not an instruction to delete entire directories.
 
+The [backend comparison](./design-review.md#backend-comparison-and-integration-gaps) records verified profile selection, subject-only legacy storage, policy and audit call sites, and the OIDC provisioning/freeze incompatibility. Backend integration must carry a typed identity, preserve the current public subject and actor fields, avoid no-op provisioning writes for existing users during freeze, and propagate authorization failures past CRAG fallback paths. These are target changes, not claims about current Java behavior.
+
 ## 3. Interfaces and data
 
 - Current public contract: [foundation API contract](../001-project-foundation/api-contract.md), including `/api/v1/me` and safe 401/404 responses. Preserve it until an approved coordinated change.
@@ -99,11 +107,11 @@ Verify paths and repository state again before implementation; this inventory is
 
 ## 4. Migration sequence
 
-1. Resolve the open decisions in the specification; approve the contracts, threat model and migration/rollback plan. Open the new Go repository in the workspace.
-2. Implement and test the Go service against representative local fixtures, without disabling the existing checks. Establish secure caller authentication and an authoritative policy data source.
-3. Freeze policy writes and migrate/reconcile identity and grant data by the selected freeze-and-copy method under an approved cutover process. Define who can write during each phase, failure recovery, rollback and revocation handling; avoid unsynchronized dual authorities.
-4. Integrate the Java backend and frontend as required. Keep identity validation and enforce authorization before content access. Validate cross-service failure and non-disclosure behavior.
-5. Run contract, integration, migration, authorization and live Keycloak tests. Record results and cutover approval; only then remove superseded implementation and move operational ownership.
+1. Verify the Go repository and setup; develop the detailed contracts, threat model and migration/rollback design alongside implementation. The independent human review is not an implementation prerequisite.
+2. Implement and test the Go service and backend/frontend integration against representative isolated fixtures without switching the live policy authority. Retain Java identity validation and enforcement, and verify cross-service failures and non-disclosure.
+3. Rehearse freeze, migration, reconciliation, integrated Keycloak flows and rollback in an isolated environment. Address the legacy filter's no-op insert before enabling a statement-level guard, and define authority, failure recovery and revocation handling.
+4. After release and operational gates pass and separate cutover approval is obtained, activate the production freeze, drain writes, take a fresh snapshot and migrate/reconcile. Switch only after reconciliation and authority checks succeed; otherwise stop safely without competing authorities.
+5. Verify the selected authority and enforcement before resuming writes. Remove superseded policy implementation only after the cutover and applicable verification gates are met; retain resource enforcement.
 
 ## 5. Test strategy
 
@@ -116,4 +124,4 @@ Verify paths and repository state again before implementation; this inventory is
 
 ## 6. Rollback and current status
 
-Rollback details depend on the data authority and deployment design and must be approved before cutover. Until then, current Spring authentication and `AccessService` behavior remain authoritative. No implementation, repository creation, code removal, migration or verification was performed as part of this documentation phase.
+Rollback details depend on the data authority and deployment design and must be reviewed before cutover. Until then, current Spring authentication and `AccessService` behavior remain authoritative. The auth repository has initial Go components, an experimental PostgreSQL store and a loopback-only synthetic test server, but no deployment-ready service. Synthetic PostgreSQL store, server and guard tests do not verify the production schema, migration or cross-service integration.
