@@ -19,6 +19,9 @@ If a decision changes, update this file first, then the affected spec or task.
 | DEC-011 | Ask-page labels and collection display | Keep API role labels and collection IDs; no persona mapping or display-name API change | Approved |
 | DEC-012 | Documents-page search, pagination, upload navigation and processing actions | Add case-insensitive literal filename-substring search; show 20 documents per page; make Upload navigation open the existing Documents upload form; reject re-index/delete while ingestion is queued or processing | Approved |
 | DEC-013 | Authentication and authorization service boundary | Plan a separate Go auth service owning identity provisioning, roles, grants, and policy decisions; retain Keycloak and backend-side identity validation and enforcement | Owner-selected direction; detailed design pending |
+| DEC-014 | EKA application-evaluation framework | Use DeepEval as the selected framework for future application evals; preserve the current runner until an integration pilot confirms runtime and metric coverage | Owner-selected direction; pilot and spec approval pending |
+| DEC-015 | EKA evaluation automation and experiment tracking | Use GitHub Actions to orchestrate evaluation runs and MLflow to track run parameters, metrics, lineage, and report artifacts; keep logs for diagnostics, not as the experiment record | Owner-selected direction; spec approval and hosting/data controls pending |
+| DEC-016 | Live deployment evaluation gate | Gate live deployments on approved thresholds and no unacceptable regressions against an accepted compatible baseline; do not gate local development | Owner-selected direction; gate policy and implementation pending |
 
 ---
 
@@ -277,3 +280,54 @@ All values are configurable and will be tuned during evaluation (EKA-19).
 These are approved choices, not a finished security design: validation limits, configured page-size rules and scope-limit enforcement, trigger and snapshot mechanics, privacy-safe cursor binding, secret management, rotation and error mapping, identity mapping mechanics, certificate and incident procedures, schema privileges, operational deadlines and the migration/rollback runbook remain to be specified and reviewed. A02 remains pending.
 
 **Current baseline:** DEC-001, the existing OIDC specification and current API contract remain authoritative until changes are explicitly approved and implemented.
+
+## DEC-014: EKA application-evaluation framework
+
+**Status:** Owner-selected direction (2026-11-09); integration pilot and spec 011 approval pending.
+
+**Decision:** Use DeepEval as the selected framework for future EKA application evals, including RAG chatbot evaluation and, if separately specified, future agent-workflow evaluation. Retain the current Node.js evaluation runner and its CLI/output compatibility until a bounded integration pilot confirms the supported DeepEval runtime, required metric coverage, and fit with the versioned EKA dataset and report contracts. Do not start implementation of the new pipeline until spec 011 and its blocking decisions are approved.
+
+**Constraints:**
+
+- DeepEval supplements, but does not replace, EKA's deterministic checks, human review, authorization tests, safety cases, or operational measurements. Add custom checks where framework metrics do not satisfy approved EKA criteria; do not duplicate the same metric in multiple scoring paths.
+- LLM-judge results remain advisory until calibrated against human labels under spec 011 FR-13.
+- Do not send confidential questions, answers, or retrieved passages to external judges or hosted services without explicit data-egress approval. Dataset and report formats remain versioned and language-neutral.
+- The integration pilot must verify any TypeScript/JavaScript SDK path against the needed metrics and existing Node.js runner. Use a separate Python component only if the pilot shows the required coverage cannot be delivered cleanly in the current runner; preserve the shared JSON dataset/report contract.
+
+**Affects:** [specification 011](../../specs/011-evaluation-pipeline/spec.md), its plan and tasks, the [evaluation guide](../Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md), and future backend evaluation tooling.
+
+## DEC-015: EKA evaluation automation and experiment tracking
+
+**Status:** Owner-selected direction (2026-11-09); spec 011 approval and hosting/data controls pending.
+
+**Decision:** Use GitHub Actions to trigger and run approved offline EKA evaluation jobs, and MLflow to track experiment parameters, computed metrics, run lineage, and references to redacted reports. GitHub Actions is the CI/orchestration layer; MLflow is the experiment-tracking layer. Job logs are for execution diagnostics and must not be the canonical metric or experiment record.
+
+**Proposed run flow:**
+
+1. Trigger an evaluation manually, on a schedule, or for an approved configuration/code change. Begin in report-only mode; do not make unapproved metrics block a change.
+2. Use a fixed, authorized dataset and corpus/index snapshot, and start EKA with the intended configuration. Capture effective runtime settings rather than inferring them from the diff alone.
+3. Run the EKA evaluation runner in the workflow. It computes available scores from test outcomes and captures request latency/errors; it must not treat free-form logs as evaluation measurements.
+4. Produce a machine-readable, redacted report and a concise Actions job summary. Record a stable run ID, source commit, dataset/corpus/index identity, configuration, runner versions, and all measured/unavailable metrics.
+5. Log parameters, metrics, run lineage, and safe report/artifact references to MLflow. Never store credentials or confidential questions, answers, passages, or equivalent content in Actions logs, artifacts, or MLflow.
+6. Compare the trial with the explicitly accepted compatible baseline. A reviewer decides whether to accept/promote a run; Actions must not silently replace the baseline.
+
+**Constraints and unresolved deployment details:**
+
+- Start with a non-confidential dataset or an appropriately controlled runner/provider path. GitHub-hosted runner access, dataset movement, model-provider egress, MLflow hosting, artifact storage, access control, and retention require explicit review before confidential evaluation data is used.
+- MLflow stores experiment metadata and approved artifacts; it does not calculate EKA quality scores. The evaluation runner/framework computes them. Dashboards visualize tracked runs; production dashboards/telemetry are a separate operational-monitoring concern.
+- The MLflow deployment mode (self-hosted or managed), artifact backend, retention, access policy, and network placement remain to be decided under spec 011 OI-16.
+- This direction does not authorize implementation of the evaluation pipeline before spec 011 approval.
+
+**Affects:** [specification 011](../../specs/011-evaluation-pipeline/spec.md), its plan and tasks, the [evaluation guide](../Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md), and future backend CI/evaluation tooling.
+
+## DEC-016: Live deployment evaluation gate
+
+**Status:** Owner-selected direction (2026-11-09); spec 011 approval, measurable gate policy and implementation pending.
+
+**Decision:** For live application deployment, require an evaluation of the candidate against the accepted compatible baseline. Deployment may proceed only when every required approved threshold is met and no required metric or case has an unacceptable regression under approved rules. Equal results may pass; a strict improvement is not required. Improvement in one metric cannot offset a failure in another required metric. This gate does not apply to local development, local application startup or local evaluation runs.
+
+The gate must fail closed for absent, failed, untrusted or incomparable required evidence, and must bind its decision to the candidate artifact and effective deployment-relevant configuration. Baseline acceptance or promotion remains an explicit reviewed action; passing a deployment gate does not automatically promote a baseline. No automatic exception is authorized: bootstrap, emergency and rollback procedures, if needed, require a separately approved policy. Existing release and security requirements still apply.
+
+Approved metrics, thresholds, regression margins, evidence freshness, minimum samples, variability treatment, deployment scope and exception governance remain open under spec 011 OI-7 and OI-17. This selection neither establishes numeric thresholds nor claims that a gate is implemented or authorizes implementation before spec 011 approval.
+
+**Affects:** [specification 011](../../specs/011-evaluation-pipeline/spec.md), its plan and tasks, the [evaluation guide](../Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md), and future deployment automation.

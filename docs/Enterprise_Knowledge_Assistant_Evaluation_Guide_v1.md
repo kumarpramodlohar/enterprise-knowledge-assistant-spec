@@ -47,7 +47,7 @@
 6. [The 8-step eval pipeline](#6-the-8-step-eval-pipeline) — includes eval methods (§6.1) with the kinds of human evaluation (§6.1.2) and an all-types summary (§6.1.3), reference-based vs reference-free evals (§6.1.4), building a golden dataset (§6.2), analyzing results (§6.3), offline versus online evals (§6.4) including the step-by-step offline eval pipeline, and building an online eval pipeline (§6.5)
 7. [Where EKA is today](#7-where-eka-is-today)
 8. [Mapping EKA to the eval taxonomy](#8-mapping-eka-to-the-eval-taxonomy)
-9. [Proposed EKA eval pipeline](#9-proposed-eka-eval-pipeline)
+9. [Proposed EKA eval pipeline](#9-proposed-eka-eval-pipeline), including the owner-provided [custom candidate-model evaluation workflow](#98-custom-candidate-model-evaluation-workflow-owner-provided-proposal), the [cross-level regression suite](#99-cross-level-regression-suite-proposal), the [initial baseline and experiment tracking proposal](#910-initial-baseline-and-experiment-tracking-proposal), and the [live deployment regression gate](#911-live-deployment-regression-gate)
 10. [Guardrails specific to EKA](#10-guardrails-specific-to-eka)
 11. [Glossary and FAQ](#11-glossary-and-faq)
 
@@ -105,7 +105,16 @@ There are two types. Both are LLM evals, but they answer different questions and
 
 Model abilities are usually measured with **public benchmarks** — shared, standard tests that anyone can run. Well-known examples are MMLU (general knowledge), GSM8K (maths word problems), and HumanEval (coding).
 
-**Who owns it:** the big AI labs that build the models (often called frontier labs). Application engineers only **read** these results when choosing a model; they do not build or re-run them.
+There are two common ways to evaluate models:
+
+| Type | What it evaluates | When it is useful |
+|---|---|---|
+| **Benchmark evals** | A model's general capabilities on a shared dataset and scoring method, such as general knowledge, maths, or coding. | Shortlisting models using results that can be compared across published benchmark runs, while checking that the test setup is comparable. |
+| **Custom model evals** | Candidate models on a task-specific dataset and criteria chosen for a particular organization or use case. | Checking which model best fits the real task, using the same cases and evaluation method for each candidate. |
+
+For EKA, the proposed custom workflow evaluates candidates on EKA tasks using a fixed golden dataset and application flow; it therefore measures the model **as configured within EKA**, not the model in isolation. Keep prompts, retrieval settings, corpus, and other variables fixed or record changes, and treat this workflow as a proposal pending the decisions in [§9.8](#98-custom-candidate-model-evaluation-workflow-owner-provided-proposal) and [spec 011 OI-14](../specs/011-evaluation-pipeline/spec.md#open-items). Custom EKA evaluations complement rather than replace the application evals in §2.2.
+
+**Who owns it:** public benchmark evaluations are commonly run by model labs or benchmark researchers. Application teams usually read those results to shortlist candidates, then can run their own custom evaluations for their specific tasks.
 
 #### 2.1.1 Why AI engineers need model evals
 
@@ -396,6 +405,15 @@ The first column lists generic questions that apply to any LLM-powered applicati
 | Did it respond quickly enough?                                | Is the time to find passages, and the total time to answer, within the agreed limit?                                                                 | Latency                     |
 | Did it stay safe?                                             | No content leaking between document collections, no obeying hidden instructions planted in documents (prompt injection), no sensitive data revealed. | Safety                      |
 
+#### EKA application-evaluation focus
+
+Going forward, EKA evaluation focuses on **application behavior**, with two related targets:
+
+1. **RAG chatbot evaluation:** evaluate the current end-to-end question-answering experience and its components, including retrieval quality, evidence-grounded answers, citations, abstention, authorization, safety, and latency.
+2. **Agent application evaluation:** if agent workflows are introduced, evaluate them as application workflows—not as standalone model capability benchmarks. Assess whether the complete agent reliably completes its defined task, uses tools and retrieved evidence appropriately, respects authorization and safety constraints, handles failures, and meets operational limits.
+
+The RAG chatbot is the current application target. Agent evaluation is a future direction and does not imply that agent workflows are part of the current MVP or authorized for implementation; each workflow needs defined requirements, risks, and acceptance criteria before its evaluation is added.
+
 ### 2.3 Application's building blocks
 
 An LLM application can be viewed as a hub with these parts (bold = the parts most evals focus on): **User Interface**, Input Handler, **Prompt Layer**, **LLM / Model**, Context / Memory, **Tools / APIs**, **Orchestrator / Workflow**, **Retrieval System**, **Embedding Model**, **Vector Database**, **Guardrails / Safety**, **Output Parser**, **Monitoring / Logging**, **Feedback Loop**.
@@ -504,6 +522,8 @@ The last column maps each criterion to EKA.
 | Retrieval recall            | Whether all chunks needed to answer were retrieved.              | Applies; the current runner measures it from citations only (gap G1).                                  |
 | Groundedness / faithfulness | Whether every claim is supported by the retrieved context.       | Applies; not yet automated (gap G2).                                                                   |
 | Citation accuracy           | Whether cited sources genuinely support the claims made.         | Applies. Today only citation field completeness is checked, not whether the source supports the claim. |
+
+**The RAG Triad** is a useful way to examine three connected quality questions: **context relevance** (did retrieval find useful evidence for the question?), **groundedness / faithfulness** (is the answer supported by that evidence?), and **answer relevance** (does the answer address the question?). Together, they help distinguish a retrieval problem from a generation problem or an answer that is grounded but off-topic. The triad is a diagnostic lens, not a complete evaluation: EKA should also measure retrieval recall, citation accuracy, answer correctness, abstention, safety, and operational behavior.
 
 **1c. Agent / tool-use quality**
 
@@ -988,7 +1008,7 @@ Run **before deployment**, after the application is built, on a fixed, pre-colle
 2. **Version comparison:** compare two prompts, models, or retrieval settings on the same data.
 3. **Regression testing:** confirm that old failures stay fixed.
 
-Because offline evals are fast, cheap, and repeatable, they can run in a **CI pipeline**. The pipeline compares each metric with a percentage threshold and **fails the build if a result falls below it**. In EKA this is proposal-only until thresholds are approved (spec 011 OI-6, OI-7); evals run report-only until then.
+Offline evals can run in a **CI pipeline**, although runtime and cost depend on the dataset and models. For EKA, the selected direction is a live deployment gate using approved thresholds and regression limits; evaluations remain report-only until the policy is approved and the gate is implemented. Local development is not gated (spec 011 OI-6, OI-7, OI-17).
 
 #### The offline eval pipeline (step by step)
 
@@ -1003,12 +1023,12 @@ flowchart TD
     L --> R[Run every case through the app, step 5]
     R --> M[Compute metrics: code checks, then judge or human where needed, §6.1]
     M --> CMP[Compare with the stored baseline and thresholds]
-    CMP -->|all metrics pass| P[Pass: allow release]
-    CMP -->|a metric is below its threshold| F[Fail: block release]
+    CMP -->|required rules pass| P[Pass: live deployment may proceed]
+    CMP -->|required rule or evidence fails| F[Block live deployment]
     F --> A[Analyze by category and worst cases, §6.3]
     A --> I[Improve prompt, model, or system]
     I --> C
-    P --> REP[Store the report as the new baseline]
+    P --> REP[Store report; baseline promotion requires review]
 ```
 
 | #   | Stage                  | What happens                                                                                                                                                     | Output                            | Guide section |
@@ -1019,7 +1039,7 @@ flowchart TD
 | 4   | **Run**                | Call the application for each case as an authorized user and record answers, citations, and timings.                                                             | Raw results                       | §6 step 5     |
 | 5   | **Score**              | Apply each metric by its chosen method: code for Recall@K, MRR, citation checks, and latency; a calibrated LLM judge or humans for groundedness and helpfulness. | Per-case and aggregate scores     | §6.1, §9.3    |
 | 6   | **Compare**            | Compare with the **baseline** (the last accepted run) for regressions and with **thresholds** for the pass/fail decision.                                        | Deltas and verdicts               | §6 step 6     |
-| 7   | **Gate**               | If any gating metric is below its threshold, fail the pipeline; otherwise pass.                                                                                  | Exit code, build status           | §6.4          |
+| 7   | **Gate**               | For live deployment, evaluate each approved threshold and regression rule; block if a required rule or its evidence fails. Local development remains ungated. | Gate decision and reasons         | §6.4, §9.11   |
 | 8   | **Analyze**            | Slice by category, read the worst cases, and classify failures (retrieval, generation, abstention).                                                              | Failure notes                     | §6.3          |
 | 9   | **Report**             | Write a machine-readable report and a short Markdown summary without question or answer text.                                                                    | Stored report                     | §9.6          |
 | 10  | **Improve and repeat** | Change one thing, re-run on the same dataset version, and confirm the fix without new regressions.                                                               | A new baseline once accepted      | §6.3          |
@@ -1052,7 +1072,7 @@ Use **both kinds of rules**: an absolute threshold ("at least X") and a regressi
 4. **Non-confidential data in CI.** CI and scheduled runs use only non-confidential datasets; confidential datasets run locally in an access-controlled place (§10).
 5. **Report first, gate later.** Start report-only, observe how stable the metrics are, then approve thresholds and turn on the gate (OI-6, OI-7).
 
-**Where EKA is today.** The runner (`node evaluation/evaluate.mjs`) already does stages 3, 4, 5 (partly), and 9, plus a baseline-versus-CRAG comparison. There is no stored baseline, thresholds, exit-code gate, category slicing, or CI job yet; spec 011 proposes baseline comparison, a gate, and scheduling (FR-23, EV08, EV20; thresholds OI-6, OI-7). See §7 and §9.7.
+**Where EKA is today.** The runner (`node evaluation/evaluate.mjs`) already does stages 3, 4, 5 (partly), and 9, plus a paired baseline-versus-CRAG comparison. There is no generally accepted initial characterization baseline, retained experiment history, thresholds, exit-code gate, category slicing, or CI job yet; spec 011 proposes baseline comparison, a gate, and scheduling (FR-23, EV08, EV20; thresholds OI-6, OI-7). See §7 and §9.7.
 
 #### Online evals
 
@@ -1223,7 +1243,7 @@ Verified against the backend repository (`evaluation/evaluate.mjs`, `evaluation/
 | RAG workflow                           | Core chat path                                    | **Primary target.**                                              |
 | Document extraction workflow           | PDF/DOCX/TXT/MD extraction → chunking → embedding | Medium — extraction fidelity and chunk quality affect retrieval. |
 | CRAG workflow                          | Optional, disabled by default                     | Compare against baseline when enabled.                           |
-| Agent / multi-turn / structured-output | Not in the MVP                                    | Out of scope.                                                    |
+| Agent / multi-turn / structured-output | No agent workflow in the MVP                    | Future application-evaluation target if such workflows are specified and introduced; not in current spec 011 scope. |
 
 ### 8.3 Entire application
 
@@ -1248,6 +1268,8 @@ End-to-end answer correctness, latency, error rate, cost, and safety through the
 ### 9.1 Placement
 
 Keep evals **separate from runtime services** but do not build a separate deployed service yet. The runner stays in the backend repository's `evaluation/` area (outside Spring startup and request handling) and exercises the application over its API. Requirements and decisions stay in this specification repository.
+
+**Framework direction:** DeepEval is the owner-selected framework for future EKA application evals (DEC-014), pending an integration pilot and approval of spec 011. Its [RAG evaluation quickstart](https://deepeval.com/docs/getting-started-rag) documents RAG evaluation and TypeScript usage. The pilot should verify that integration against the existing Node.js CLI, EKA's required metrics, and the versioned dataset/report formats. Keep deterministic checks, human review, authorization/safety checks, and operational measurements that are not adequately covered by framework metrics. This direction does not mean the pipeline is implemented or authorize confidential data to be sent to an external judge.
 
 ```text
 backend/evaluation/
@@ -1349,6 +1371,110 @@ This guide does not resolve the conflict. Options and a recommendation are in sp
 - Refresh the golden dataset by hand from reviewer-submitted failures (OI-4), which is the manual form of the step 8 → 3 loop.
 
 If online evals are later approved, the PII, retention, access-control, non-blocking, and external-judge rules in §6.5 and §10 would all apply, and the tool choice (for example a tracing product versus a self-hosted store) would need a decision. Sending logged turns to an external tracing or judge service is itself an external disclosure that needs explicit authorization.
+
+### 9.8 Custom candidate-model evaluation workflow (owner-provided proposal)
+
+The following 12-step process captures the custom workflow supplied by the owner. It is a proposed way to compare candidate models on EKA tasks, not an approved change to the evaluation scope, a model benchmark, or authorization to access production data. It complements the 8-step evaluation lifecycle in §6: dataset preparation and flow verification happen before repeatable model runs, and the final choice follows recorded evidence.
+
+| Step | Activity | EKA-specific guidance and evidence |
+|---|---|---|
+| 1 | Identify the evaluation dataset | Choose an authorized, representative corpus and evaluation purpose. Keep confidential source documents and derived questions in an access-controlled location, not Git. |
+| 2 | Filter and load the database | Use only the approved dataset/corpus slice and a read-only access path. Record the filter and source version so the same evaluation can be reproduced; do not dump unrelated or unauthorized records. |
+| 3 | Extract the schema | Inspect the relevant document, collection, chunk, and metadata fields needed to construct labels. Record schema/version and the chunking/embedding configuration; do not copy credentials, personal data, or unnecessary source content into reports. |
+| 4 | Build the golden dataset | Create realistic answerable, unanswerable, multi-source, paraphrased, and adversarial cases. Human-label all supporting chunk IDs and, where useful, a reference answer and expected answer/abstain behavior. |
+| 5 | Validate the golden dataset | Validate its schema, required labels, chunk references, category coverage, and reviewer agreement. Resolve ambiguous or stale labels before scoring models; report validation failures without exposing question text. |
+| 6 | Store the golden dataset in CSV format | The supplied workflow calls for CSV. CSV is a proposed interchange/export format only until OI-13 is decided; the existing runner/specification use JSONL. Whichever canonical format is selected must be versioned, hashed, safely escaped, and stored outside source control when confidential. |
+| 7 | Check the EKA flow | Run a small authorized smoke check through the real ingestion/retrieval/chat path and confirm the candidate configuration reaches the intended model. Verify authorization, citations, abstention, timeouts, and safe failure behavior before the scored run. |
+| 8 | Pick candidate models | Select only models/providers allowed by project decisions and data-handling authorization. Record model identifiers, versions, deployment/provider, and constraints; do not send confidential prompts or passages to a provider without explicit authorization. OpenRouter is proposed only as an optional chat route for candidate comparison, subject to OI-14, compatibility verification, and explicit data-egress approval; it is not an approved production provider. Keep embeddings unchanged for this comparison. |
+| 9 | Build the evaluator | Define deterministic checks, human rubrics, and any judge-based metrics before running. Keep retrieval, answer correctness, groundedness, citation, safety, and operational results distinct. A judge remains advisory until calibrated against human labels. |
+| 10 | Build the orchestrator | Run each candidate against the same frozen dataset and application flow. Pin and record configuration, bound concurrency/timeouts/failure budgets, isolate credentials, and prevent one model's output or state from affecting another candidate's run. |
+| 11 | Run all candidate models | Execute the planned runs and retain per-case identifiers, metrics, errors, versions, and report hashes. Compare models on equivalent inputs and settings; change one variable at a time unless the experiment explicitly tests a combined configuration. |
+| 12 | Make the decision | Compare results against criteria approved before the run, review worst cases and category-level safety/quality, and document trade-offs and limitations. Unapproved numeric targets cannot become pass/fail gates; a report alone does not establish release readiness. |
+
+This process evaluates candidate models **as configured within EKA**. It does not replace public model-capability benchmarks, and it must not be used to attribute an application-level change to the model if prompts, retrieval settings, embeddings, corpus, or other variables also changed without being recorded. Scope and canonical CSV-versus-JSONL format remain open in [spec 011](../specs/011-evaluation-pipeline/spec.md#open-items).
+
+### 9.9 Cross-level regression suite (proposal)
+
+The proposed regression suite compares each current evaluation run with the accepted baseline and preserves comparisons to **all retained prior reports** across EKA's three application-evaluation levels:
+
+| Level | Matrix includes | What regression checks answer |
+|---|---|---|
+| **Component** | Individual targets such as retrieval, generation, citations, ingestion/extraction, and safety checks | Did a component change fix its intended issue or break a previously passing case? |
+| **Workflow / integration** | Connected paths such as retrieval + generation (RAG), ingestion through indexing, and optional CRAG when enabled | Do the components still work together, including error and abstention paths? |
+| **Whole application** | User-facing API (and later UI) outcomes across correctness, completeness, style/usefulness, safety, and operations | Did user-visible behavior or operational quality regress? |
+
+Each run should produce a separate matrix per level. Rows use stable suite, target, case, and metric IDs and show the current result, applicable accepted-baseline result and delta, method, sample size, status, and the run/configuration reference. Keep every generated report as an immutable, access-controlled history record. The current report should index every retained previous report and show its per-level comparison status; do not silently omit older matrices.
+
+#### Suggested regression run sequence
+
+1. **Freeze the run inputs:** validate the dataset version/hash, case labels, corpus/index, and authorized test identity. Record model, prompt, retrieval, embedding, runner, and suite versions.
+2. **Run every configured level:** execute component checks, workflow/integration checks, and whole-application checks. Mark each expected matrix cell as measured, failed, unavailable, or not run; a missing result is not a pass.
+3. **Compare with the accepted baseline:** calculate per-case and per-metric deltas for each level. Report new failures, fixed failures, unchanged failures, metric regressions, and improvements using stable IDs.
+4. **Compare with retained history:** list all previous reports and their level-by-level comparison status. Numeric comparisons require compatible dataset labels, case/metric definitions, and relevant configuration. If these changed, retain the record but mark the comparison incomparable and explain why.
+5. **Inspect cross-level effects:** a component improvement is not accepted by itself if a workflow or whole-application matrix regresses. Check worst cases and category slices rather than relying only on aggregate scores.
+6. **Decide and record:** compare against approved thresholds and the accepted baseline. Older reports provide trend/context; they do not independently fail the run. Keep unapproved targets report-only.
+7. **Promote an accepted run:** only an explicitly reviewed and accepted run becomes the next baseline. Keep its report and configuration metadata; do not replace or rewrite historical reports.
+8. **Feed verified failures back:** add confirmed failures as versioned regression cases through the approved reviewer process. Production questions, answers, and passages remain out of logs/reports and external services without authorization.
+
+Model, prompt, retrieval, or runner changes can be intentional experiments. Preserve their configuration deltas and compare them on the same compatible cases, but do not label a change itself as a regression. The latest accepted compatible baseline is the decision reference; the full archived history is for diagnosis and trend analysis. This is a proposed extension, not implemented behavior: [spec 011 FR-25–FR-28 and AC-21–AC-25](../specs/011-evaluation-pipeline/spec.md#runs-reports-and-comparison).
+
+### 9.10 Initial baseline and experiment tracking (proposal)
+
+The first regression run should establish an **observed characterization**, not claim an optimal configuration. Use the same frozen, authorized dataset and corpus/index snapshot for the component, workflow/integration, and whole-application matrices. Run report-only, inspect labels and failures, record the effective backend settings, and have the run reviewed before accepting it as the first regression baseline. Do not promote it automatically, use it as proof of production readiness, or turn proposed targets into gates.
+
+#### Suggested baseline and tuning sequence
+
+1. **Freeze the evaluation inputs:** record dataset version/hash, corpus/document revision, index identity, gold-label version, user authorization scope, and suite/matrix definitions. Ensure embedding and chunk labels correspond to the index being tested.
+2. **Capture the actual environment:** record source commit/build, backend and evaluation-runner versions, provider/model identifiers, relevant dependency versions, database/vector extension, runtime/hardware, and effective (not merely intended) application properties. Record unknown, overridden, or unavailable settings explicitly.
+3. **Run the characterization matrices:** execute all available component, workflow/integration, and whole-application cases with no tuning changes. Preserve per-case and aggregate results, error/latency data, methods, sample sizes, and limitations in a redacted report. Human-judge metrics remain advisory until calibrated.
+4. **Review and accept or reject the baseline:** verify the data labels, effective config, matrix coverage, and result integrity. An authorized reviewer explicitly accepts it as the comparison baseline or records why it is not suitable. A baseline can be poor; it is a reference point, not a pass mark.
+5. **Create linked tuning trials:** assign each trial a stable run ID and parent/baseline ID. Write a short hypothesis, select one parameter or explicitly declared group, list controlled variables, run the same cases, and compare all three matrices.
+6. **Handle changes that invalidate comparability:** changing chunk size/overlap requires re-ingestion and new/validated chunk labels; changing embedding model/provider requires a new compatible embedding index and re-embedding the corpus. Record the new corpus/index and label identities, and mark comparisons incomparable where labels or targets do not align.
+7. **Inspect trade-offs and interactions:** compare retrieval, answer quality, safety, and operations together. If a single-variable sweep shows interactions, run a separately named multi-factor experiment and document its design; do not attribute its result to one parameter.
+8. **Store and promote deliberately:** retain immutable reports and safe parameter manifests. The reviewer promotes an accepted run to the next baseline; never overwrite the earlier accepted baseline or delete historical comparisons implicitly.
+
+#### EKA parameter manifest
+
+At minimum, capture effective values (or explicitly mark unsupported/unavailable) for:
+
+| Parameter group | Settings to track | EKA-specific comparability note |
+|---|---|---|
+| Chunking and ingestion | Chunk size, overlap, chunker/parser version, extraction limits, ingestion batch size/concurrency/retries | Chunking/parser changes require corpus re-ingestion and revalidated chunk labels. |
+| Embeddings and index | Provider, exact model/version, dimensions, batch size, vector table/index identity, corpus/index revision | Model/provider changes require re-embedding into a compatible index; do not compare against stale labels. |
+| Retrieval and context | Top-K, similarity threshold, context-token budget, metadata filters, candidate count | Keep fixed for unrelated trials; note approved DEC-007 values versus effective runtime values. |
+| Generation | Chat provider/model/version, prompt/template hash, temperature, top-p, token limits and other decoding options if exposed | The inspected EKA configuration and `EkaProperties.Ai` do not expose temperature or top-p. The effective provider/framework default is not established by that configuration; record it as unknown unless verified at runtime. Do not claim a temperature sweep until EKA exposes and verifies the setting. |
+| Workflow and safety | CRAG enabled, max evaluated passages/rewrites, timeout, web-search opt-in and limits, authorization/test identity and scopes | External search/provider use requires the existing approvals; never record credentials or protected text. |
+| Evaluation and runtime | Dataset/schema/hash, case and metric versions, DeepEval/runner/dependency versions, run ID/parent ID, timestamp, source commit, Java/OS/hardware, PostgreSQL/pgvector versions | Report versions and resources needed to explain variance; keep the same setup for controlled trials. |
+
+The currently approved DEC-007 starting values (chunk size 800, overlap 100, Top-K 5, context budget 4,000, similarity threshold 0.70, ingestion concurrency 2) are **not all the same as the inspected backend defaults** (including Top-K 10 and threshold 0.30). The first run must record effective runtime values and separately identify approved values and discrepancies; resolve applicable configuration gaps before calling a run the accepted reference. Likewise, do not claim a setting was tested merely because it appears in the decision table.
+
+**Selected direction:** use GitHub Actions and MLflow together, with separate responsibilities. Actions triggers and runs the approved offline evaluation; the evaluation runner/framework computes quality and operational scores; MLflow records parameters, metrics, run lineage, and safe references to reports. Actions logs are diagnostic output, not the canonical experiment record. A dashboard can visualize the tracked MLflow runs, but it is not the evaluation engine or a production-operations dashboard.
+
+#### Proposed GitHub Actions + MLflow steps
+
+1. Trigger manually, on a schedule, or on an approved code/configuration change. Do not trigger automatically on arbitrary setting changes until the workflow is scoped and approved.
+2. Check out the exact source commit and start EKA with the intended configuration. Capture the effective runtime settings; a config-file diff alone does not prove which values were used.
+3. Load the fixed, authorized dataset and corpus/index snapshot. Use non-confidential inputs unless the runner, provider, and tracker data paths have been approved for the data.
+4. Run the evaluation CLI and have it compute available metrics from test outcomes. Capture latency/errors during the run. Do not infer eval scores by parsing application logs.
+5. Emit a redacted JSON report and a concise Actions job summary with run ID, source commit, dataset/corpus/index identity, config version, metric values/status/sample counts, and known limitations.
+6. Record parameters, metrics, parent/baseline run ID, and a safe report reference in MLflow. Keep any content-bearing evaluation inputs out of MLflow, workflow logs, and artifacts. Never write secrets to run metadata.
+7. Compare with the accepted compatible baseline. Start report-only; after approval and implementation, the live deployment gate checks approved thresholds and regression rules. A reviewer explicitly accepts or promotes a baseline.
+
+GitHub Actions is the CI/orchestration layer; MLflow is the experiment-tracking layer. The evaluation runner computes the scores. Logs support diagnosis, and the dashboard displays recorded run data. This offline experiment workflow does not imply live production telemetry or a production metrics dashboard.
+
+This direction is owner-selected, but the spec 011 implementation remains pending approval. Before integration, resolve runner trust boundary (GitHub-hosted versus controlled/self-hosted), access to datasets and model providers, MLflow hosting/network placement, artifact storage, permissions, retention, and baseline-promotion controls under [spec 011 OI-16](../specs/011-evaluation-pipeline/spec.md#open-items). No confidential data egress or content-bearing report storage is approved by this guide.
+
+### 9.11 Live deployment regression gate
+
+**Owner-selected direction, not implemented:** Gate live application deployment using the candidate's offline evaluation, not by requiring every release to score strictly better. Local development, local startup and local evaluation remain usable without this gate.
+
+1. **Approve the policy first:** define the required suites/cases and metrics across the relevant component, workflow and whole-application levels; thresholds, allowed regression margins, sample sizes, variability and evidence freshness. Approve an accepted baseline and the evidence/exception procedures under OI-7, OI-15 and OI-17. Do not invent numeric limits.
+2. **Evaluate the candidate:** run the approved suite on fixed, authorized inputs with the candidate artifact and deployment-relevant effective configuration. Save a redacted report identifying the artifact, commit, configuration, dataset/corpus/index, run and accepted baseline.
+3. **Verify and compare:** check report authenticity, freshness, completeness and compatibility; evaluate every required threshold and regression rule separately. A tie can pass; an improvement in correctness does not cancel a safety, latency or other required failure. Do not gate on an uncalibrated judge.
+4. **Decide for live deployment:** once the gate is enforced, allow the deployment job to proceed only if all required checks pass and the decision matches the exact artifact and configuration being deployed. A failing check, unavailable verifier, missing or incompatible baseline, missing or stale report, or mismatch blocks automatic deployment with an explicit reason. A report-only run is not an approval.
+5. **Keep release controls and history:** other security and release approvals still apply. Keep the decision and run references; passing the gate does not promote a baseline. Only an authorized reviewer can accept a new baseline. Bootstrap, rollback and emergency exceptions need a separately approved policy; none is automatically permitted.
+
+The GitHub Actions deployment workflow would enforce this decision; the evaluation runner computes the metrics, while MLflow tracks the experiment and report references. This is separate from local development and from live production telemetry. No implementation or production deployment is claimed.
 
 ---
 
