@@ -31,7 +31,7 @@ Mapping to the 8 steps: 1–2 = charter and metric catalogue in the spec; 3 = lo
 | Entry point | `evaluation/evaluate.mjs` | Backward-compatible CLI |
 | Dataset | `evaluation/lib/dataset.mjs`, `evaluation/datasets/` | Validate v1/v2, hash, schema, non-sensitive samples |
 | API client | `evaluation/lib/client.mjs` | Local auth now; OIDC bearer later; timeouts and failure budget |
-| Retrieval metrics | `evaluation/lib/metrics/retrieval.mjs` | Recall@K (relevant in top K ÷ total relevant), MRR, hit rate; miss classification (absent / below threshold / below K) when raw candidates exist |
+| Retrieval metrics | `evaluation/lib/metrics/retrieval.mjs` | Recall@K, MRR, hit rate; miss classification and separately labelled human- and judge-based Precision@K on authorized raw candidates when available |
 | Generation metrics | `evaluation/lib/metrics/generation.mjs` | Faithfulness, hallucination, relevance, citation validity |
 | Combined metrics | `evaluation/lib/metrics/end-to-end.mjs` | Answer correctness, abstain accuracy |
 | Operational metrics | `evaluation/lib/metrics/operational.mjs` | Percentiles, error/timeout rate, tokens/cost |
@@ -44,6 +44,12 @@ Mapping to the 8 steps: 1–2 = charter and metric catalogue in the spec; 3 = lo
 
 ## Data model
 **Dataset row (v2, superset of v1):** `id`, `question`, `answerable`, `relevantChunkIds`, optional `humanReview`, plus optional `referenceAnswer`, `category`, `source`, `expectedBehavior`, `tags`, `difficulty`. Dataset-level metadata: version, hash, chunking/embedding configuration the labels were created under, reviewer and review date.
+
+**Retrieval dataset sourcing (proposed, OI-18):** Start B06 with human-authored and authorized LLM-assisted candidates, then independently review source evidence, labels and answerability against the authorized corpus. EV35 pilots DeepEval Synthesizer using non-confidential data and evaluates prepared EKA contexts, provenance, true indexed-chunk mapping, runtime and egress; no new application storage or provider is implied. Keep generated candidates and review records distinct; record label coverage, uncertain negatives, split and origin metadata. A separate held-out set must not be tuned against. Production-log mining is deferred behind OI-4/OI-12 and required privacy/decision approvals; reviewer-submitted cases must also obey existing restrictions. The candidate artifact's schema and the existing runner schema differ; map and validate reviewed labels before conversion.
+
+**Retrieval-noise evaluation (draft):** Use a reviewed question and reference answer with each authorized top-K retrieved chunk in a separate, versioned relevance-judge prompt, as illustrated in [guide §5.6](../../docs/Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md#judging-retrieved-chunks-against-a-golden-reference-answer). Validate the yes/no verdict and reason; calculate fixed-denominator Precision@K only when all returned chunks have valid verdicts. Record empty and unfilled results, unavailable/excluded cases, counts and method. Aggregate only available cases and expose coverage. Maintain a distinct human-label score only for explicitly judged candidates; relevant-ID lists do not make unlabeled candidates negative. Agree the representation and storage of reviewed positive/negative judgments and their provenance before implementing it; preserve v1 compatibility. Do not retain confidential text or text-bearing reasons in reports/logs.
+
+The judge is advisory until calibrated against human relevance labels. Use an approved provider and only server-authorized evidence; raw-candidate access and any passage-text exposure depend on OI-1/OI-3. DeepEval integration and whether it can meet this exact fixed-K, per-chunk contract remain subject to EV29; do not assume contextual precision has identical semantics.
 
 **Report:** run metadata (dataset hash/version, model/config/embedding/prompt/runner versions, timestamps); per-metric value, sample size, method, and status (`calibrated`, `advisory`, `unavailable`); per-category slices; per-case rows without text; failures list; baseline comparison; target status (`proposed` until approved); limitations.
 
@@ -71,7 +77,7 @@ The parameter manifest should cover, where exposed: chunk size/overlap and chunk
 - B06 dataset and reviewers for any representative result.
 - B04 Keycloak realm for OIDC runner support.
 - Local Ollama (or an approved judge provider) for judge metrics.
-- Approval of OI-1 through OI-17.
+- Approval of OI-1 through OI-18.
 
 ## Security considerations
 Authorization is enforced on the server for every evaluated request. Reports omit text by default. Judge prompts treat all content as untrusted data. Datasets and credentials remain external. Diagnostic output (if approved) is off in deployed profiles and never logs content.
@@ -80,7 +86,7 @@ No request containing confidential questions or retrieved passages may be sent t
 ## Phased delivery
 | Phase | Outcome | Depends on |
 |---|---|---|
-| P0 | Approve spec, OI-1–OI-17 decisions (including candidate-model scope/provider-egress, dataset interchange, regression-history retention/baseline acceptance, Actions/MLflow data controls and the live gate policy); record in decisions | Owner |
+| P0 | Approve spec, OI-1–OI-18 decisions (including dataset sourcing, candidate-model scope/provider-egress, dataset interchange, regression-history retention/baseline acceptance, Actions/MLflow data controls and the live gate policy); record in decisions | Owner |
 | P1 | Refactor into modules; v2 loader; tests; no behavior change | P0 |
 | P2 | Operational metrics (percentiles, errors) and richer reports/baseline comparison | P1 |
 | P3 | Combined correctness and abstain metrics; human-review import | P1, dataset fields |
@@ -97,6 +103,8 @@ If P0 approves OpenRouter as a candidate chat route, add and verify its opt-in b
 
 ## Testing strategy
 - Unit tests for loader validation, each metric formula, percentile calculation, comparison, and report redaction (no model calls).
+- Retrieval-noise fixture tests for fixed K, fewer than K and empty results, partial/malformed/failed judgments, unavailable aggregates, explicit human labels versus unknown candidates, eligibility, method separation, and redaction; test prompt-injection handling and authorization boundaries separately. Calibrate judge verdicts against reviewed labels before any pass/fail use.
+- Dataset sourcing review/pilot checks: unreviewed candidates cannot be promoted, source anchors resolve to real indexed chunks without fabricated IDs, unjudged is distinct from irrelevant, corpus and authorized scope support answerability, held-out leakage is checked, and provider/data authorization is recorded.
 - EV29 integration pilot: verify the selected DeepEval SDK/runtime against EKA's RAG and whole-application requirements, dataset/report contracts, judge calibration, and data-egress constraints before selecting implementation details.
 - Regression-history tests: verify all retained prior reports are represented, compatible deltas are correct, incomparable/missing cells are explicit, status transitions are stable by case ID, and no confidential text enters archived artifacts.
 - Experiment-manifest tests: verify complete effective-configuration capture, parent/baseline run linkage, secret redaction, unsupported-setting status, and comparability warnings for dataset/corpus/index changes.
@@ -108,4 +116,4 @@ If P0 approves OpenRouter as a candidate chat route, add and verify its opt-in b
 - Regression: v1 dataset and CLI outputs remain compatible.
 
 ## Verification
-Map AC-1–AC-34 to test or run evidence; report actual results and skipped checks; do not mark T18/T19 complete without a representative human-reviewed run.
+Map AC-1–AC-42 to test or run evidence; report actual results and skipped checks; do not mark T18/T19 complete without a representative human-reviewed run.

@@ -149,7 +149,7 @@ This was the original target structure. The current repository uses `docs/` for 
 | `docs/implementation/Implementation_Backlog_v2.md` | Current backlog, unresolved questions, and implementation progress |
 | `plan.md`               | Ordered execution, dependencies, and verification criteria for remaining work       |
 
-The [Evaluation Developer Guide](docs/Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md) explains LLM evals and the proposed EKA evaluation pipeline; its draft requirements are in [specs/011-evaluation-pipeline](specs/011-evaluation-pipeline/spec.md).
+The [Evaluation Developer Guide](docs/Enterprise_Knowledge_Assistant_Evaluation_Guide_v1.md) explains LLM evals and the proposed EKA evaluation pipeline; the [10-minute evals refresher](docs/Enterprise_Knowledge_Assistant_Evals_Refresher.md) covers generic RAG and agentic evaluation concepts and interview talking points. Draft requirements are in [specs/011-evaluation-pipeline](specs/011-evaluation-pipeline/spec.md).
 
 ## 7. Spec-Driven Development Workflow
 

@@ -1,0 +1,481 @@
+{
+  "dataset_id": "java-textbook-candidates-v1",
+  "status": "draft_pending_human_review",
+  "purpose": "Standalone candidate questions and reference answers for reviewing retrieval and grounded-answer behavior; not an approved golden dataset or a runner-ready file.",
+  "source": {
+    "title": "Introduction to Programming Using Java",
+    "author": "David J. Eck",
+    "version": "5.0.2",
+    "publication_date": "November 2007",
+    "local_filename": "javanotes5.pdf",
+    "sha256": "af0680104fc3271d70967a06bc5a12c0e7aa1cde97571c21a6d1afadfefd0e11",
+    "total_pdf_pages": 699,
+    "page_number_convention": "1-based PDF page index, not the page number printed in the book",
+    "license": "Creative Commons Attribution-ShareAlike 2.5 as stated in the source PDF; review applicable obligations before redistribution."
+  },
+  "instructions": {
+    "scope": "The supplied, unchanged PDF is the only evidence corpus. Questions concern the book's explanations and examples, not necessarily current Java guidance.",
+    "answerable_cases": "The listed pages are candidate supporting evidence, not exhaustive relevance judgments. Some questions require combining or applying facts. A correct answer should be grounded in and cite the source.",
+    "unanswerable_cases": "These ask for actual events after publication; the 2007 edition cannot establish later outcomes. Empty evidence_pages means no supporting answer has been identified, not that a complete corpus-wide search has been performed. Verify these labels against the complete indexed corpus and its metadata before use.",
+    "review": "A human must inspect the source, validate each answer and page, confirm each negative against the complete corpus, resolve ambiguities, and approve a dataset version before calling it gold.",
+    "runner_conversion": "Do not invent relevantChunkIds. After the exact PDF is indexed, obtain actual chunk IDs, have reviewers label all relevant chunks, and convert the reviewed cases to the evaluation runner's required JSONL schema.",
+    "license_and_privacy": "Keep the source and derived dataset within authorized environments. Confirm licensing and disclosure requirements before sharing externally."
+  },
+  "cases": [
+    {
+      "id": "JAVA-001",
+      "category": "primitive-types",
+      "difficulty": "easy",
+      "question": "According to the book, how many bits make one byte?",
+      "answerable": true,
+      "reference_answer": "A byte consists of eight bits.",
+      "evidence_pages": [41]
+    },
+    {
+      "id": "JAVA-002",
+      "category": "primitive-types",
+      "difficulty": "easy",
+      "question": "What range of integers does the textbook give for Java's byte type?",
+      "answerable": true,
+      "reference_answer": "From -128 through 127, inclusive.",
+      "evidence_pages": [41]
+    },
+    {
+      "id": "JAVA-003",
+      "category": "primitive-types",
+      "difficulty": "easy",
+      "question": "How much storage does the book associate with int and long values?",
+      "answerable": true,
+      "reference_answer": "An int uses four bytes, and a long uses eight bytes.",
+      "evidence_pages": [41]
+    },
+    {
+      "id": "JAVA-004",
+      "category": "primitive-types",
+      "difficulty": "medium",
+      "question": "How does the textbook compare the approximate precision of float and double?",
+      "answerable": true,
+      "reference_answer": "It describes float as having about seven significant digits and double as having about fifteen.",
+      "evidence_pages": [41]
+    },
+    {
+      "id": "JAVA-005",
+      "category": "variables",
+      "difficulty": "easy",
+      "question": "What must a programmer do before using a variable in an expression?",
+      "answerable": true,
+      "reference_answer": "Declare the variable before using it.",
+      "evidence_pages": [43]
+    },
+    {
+      "id": "JAVA-006",
+      "category": "variables",
+      "difficulty": "medium",
+      "question": "Where can a local variable declared in a subroutine be accessed, according to the book's introductory explanation?",
+      "answerable": true,
+      "reference_answer": "Inside that subroutine while it runs; it is inaccessible from outside it.",
+      "evidence_pages": [43]
+    },
+    {
+      "id": "JAVA-007",
+      "category": "classes",
+      "difficulty": "medium",
+      "question": "What two roles of a Java class does the textbook introduce?",
+      "answerable": true,
+      "reference_answer": "A class can group static members, and it can describe the variables and methods of objects of that class.",
+      "evidence_pages": [45]
+    },
+    {
+      "id": "JAVA-008",
+      "category": "methods",
+      "difficulty": "easy",
+      "question": "Why does the textbook compare a subroutine to a black box?",
+      "answerable": true,
+      "reference_answer": "A caller can use the subroutine without needing to understand its internal implementation.",
+      "evidence_pages": [45]
+    },
+    {
+      "id": "JAVA-009",
+      "category": "methods",
+      "difficulty": "easy",
+      "question": "What alternative name does the book give for a Java subroutine?",
+      "answerable": true,
+      "reference_answer": "A method.",
+      "evidence_pages": [46]
+    },
+    {
+      "id": "JAVA-010",
+      "category": "strings",
+      "difficulty": "medium",
+      "question": "If a program calls toLowerCase on a string but does not assign the result, does the original string variable change?",
+      "answerable": true,
+      "reference_answer": "No. The method returns a new string; the variable must be assigned the returned value to refer to it.",
+      "evidence_pages": [50]
+    },
+    {
+      "id": "JAVA-011",
+      "category": "strings",
+      "difficulty": "easy",
+      "question": "What does the plus operator do when used to join two strings in the book's examples?",
+      "answerable": true,
+      "reference_answer": "It creates a concatenated string containing the first string's characters followed by the second's.",
+      "evidence_pages": [50]
+    },
+    {
+      "id": "JAVA-012",
+      "category": "enums",
+      "difficulty": "easy",
+      "question": "In the Day enum example, what named value represents Friday?",
+      "answerable": true,
+      "reference_answer": "Day.FRIDAY.",
+      "evidence_pages": [52]
+    },
+    {
+      "id": "JAVA-013",
+      "category": "enums",
+      "difficulty": "medium",
+      "question": "What starting index does the enum ordinal example use for counting its declared values?",
+      "answerable": true,
+      "reference_answer": "The example counts ordinal positions starting at zero.",
+      "evidence_pages": [52]
+    },
+    {
+      "id": "JAVA-014",
+      "category": "input",
+      "difficulty": "easy",
+      "question": "Which TextIO call in the book reads an entire input line as a string?",
+      "answerable": true,
+      "reference_answer": "TextIO.getln().",
+      "evidence_pages": [55]
+    },
+    {
+      "id": "JAVA-015",
+      "category": "input",
+      "difficulty": "medium",
+      "question": "In the textbook's TextIO examples, what happens when an entered integer is invalid or out of range?",
+      "answerable": true,
+      "reference_answer": "TextIO asks for another entry; the program does not receive the invalid value.",
+      "evidence_pages": [55]
+    },
+    {
+      "id": "JAVA-016",
+      "category": "file-io",
+      "difficulty": "medium",
+      "question": "What risk does the book warn about when TextIO.writeFile targets an existing file?",
+      "answerable": true,
+      "reference_answer": "The file's previous contents are erased.",
+      "evidence_pages": [59]
+    },
+    {
+      "id": "JAVA-017",
+      "category": "file-io",
+      "difficulty": "easy",
+      "question": "How can the textbook's TextIO examples switch output back to standard output?",
+      "answerable": true,
+      "reference_answer": "Call TextIO.writeStandardOutput().",
+      "evidence_pages": [59]
+    },
+    {
+      "id": "JAVA-018",
+      "category": "operators",
+      "difficulty": "easy",
+      "question": "What change does a standalone counter++ statement make to the counter?",
+      "answerable": true,
+      "reference_answer": "It increases the counter's value by one.",
+      "evidence_pages": [62]
+    },
+    {
+      "id": "JAVA-019",
+      "category": "operators",
+      "difficulty": "easy",
+      "question": "What change does a standalone x-- statement make to x?",
+      "answerable": true,
+      "reference_answer": "It decreases x by one.",
+      "evidence_pages": [62]
+    },
+    {
+      "id": "JAVA-020",
+      "category": "tooling",
+      "difficulty": "easy",
+      "question": "In the book's command-line example, which command compiles Interest2.java?",
+      "answerable": true,
+      "reference_answer": "javac Interest2.java",
+      "evidence_pages": [69]
+    },
+    {
+      "id": "JAVA-021",
+      "category": "tooling",
+      "difficulty": "medium",
+      "question": "After compiling the Interest2 example, what name does the book pass to the java command?",
+      "answerable": true,
+      "reference_answer": "The class/program name Interest2, without the .java or .class extension.",
+      "evidence_pages": [69]
+    },
+    {
+      "id": "JAVA-022",
+      "category": "algorithm-design",
+      "difficulty": "easy",
+      "question": "What does the textbook mean by pseudocode in its algorithm-design discussion?",
+      "answerable": true,
+      "reference_answer": "Informal instructions that resemble programming constructs without requiring complete programming-language detail or syntax.",
+      "evidence_pages": [83]
+    },
+    {
+      "id": "JAVA-023",
+      "category": "algorithm-design",
+      "difficulty": "medium",
+      "question": "Why does the investment example replace repeated yearly steps with a loop?",
+      "answerable": true,
+      "reference_answer": "It reduces repetition and makes the same pattern easier to apply to different numbers of years.",
+      "evidence_pages": [83]
+    },
+    {
+      "id": "JAVA-024",
+      "category": "algorithm-design",
+      "difficulty": "medium",
+      "question": "In the investment algorithm, how is each year's interest calculated before updating the investment?",
+      "answerable": true,
+      "reference_answer": "Multiply the current investment value by the interest rate, then add the resulting interest to the value.",
+      "evidence_pages": [84]
+    },
+    {
+      "id": "JAVA-025",
+      "category": "input-validation",
+      "difficulty": "medium",
+      "question": "In the 3N+1 example, why does the book repeatedly prompt for a positive input?",
+      "answerable": true,
+      "reference_answer": "Zero or a negative input would not reach the stated termination value in that example, so the loop keeps requesting input until it is positive.",
+      "evidence_pages": [86]
+    },
+    {
+      "id": "JAVA-026",
+      "category": "control-flow",
+      "difficulty": "easy",
+      "question": "Can the body of a while loop run zero times?",
+      "answerable": true,
+      "reference_answer": "Yes. If its condition is false before the first iteration, the body does not run.",
+      "evidence_pages": [90]
+    },
+    {
+      "id": "JAVA-027",
+      "category": "control-flow",
+      "difficulty": "medium",
+      "question": "If a while-loop condition becomes false partway through the body, when is the condition checked again?",
+      "answerable": true,
+      "reference_answer": "The current body finishes, and the condition is checked again before the next iteration.",
+      "evidence_pages": [90]
+    },
+    {
+      "id": "JAVA-028",
+      "category": "control-flow",
+      "difficulty": "easy",
+      "question": "Why does the example use a do-while loop for a play-again prompt?",
+      "answerable": true,
+      "reference_answer": "The game must be played at least once before asking whether to repeat it.",
+      "evidence_pages": [93]
+    },
+    {
+      "id": "JAVA-029",
+      "category": "control-flow",
+      "difficulty": "medium",
+      "question": "What is a flag variable in the book's play-again example?",
+      "answerable": true,
+      "reference_answer": "A variable used as a signal, set in one part of the program and tested in another, such as the boolean indicating whether to continue.",
+      "evidence_pages": [93]
+    },
+    {
+      "id": "JAVA-030",
+      "category": "control-flow",
+      "difficulty": "medium",
+      "question": "What values does a counting loop starting at zero and continuing while its counter is less than ten process?",
+      "answerable": true,
+      "reference_answer": "It processes the integers zero through nine.",
+      "evidence_pages": [97]
+    },
+    {
+      "id": "JAVA-031",
+      "category": "control-flow",
+      "difficulty": "easy",
+      "question": "What common mistake can arise when choosing between less-than and less-than-or-equal in a counting loop?",
+      "answerable": true,
+      "reference_answer": "An off-by-one error, such as including or excluding the final value incorrectly.",
+      "evidence_pages": [97]
+    },
+    {
+      "id": "JAVA-032",
+      "category": "strings",
+      "difficulty": "medium",
+      "question": "In the alphabet-scanning example, why is the input converted to uppercase before checking letters?",
+      "answerable": true,
+      "reference_answer": "It lets the program compare against uppercase letters without separately checking uppercase and lowercase occurrences.",
+      "evidence_pages": [102]
+    },
+    {
+      "id": "JAVA-033",
+      "category": "strings",
+      "difficulty": "medium",
+      "question": "Why does the letter-counting example break out of the inner search after finding a letter?",
+      "answerable": true,
+      "reference_answer": "To avoid printing or counting the same letter multiple times when it occurs more than once.",
+      "evidence_pages": [102]
+    },
+    {
+      "id": "JAVA-034",
+      "category": "control-flow",
+      "difficulty": "medium",
+      "question": "In nested if statements without braces, which if does an else attach to in the textbook example?",
+      "answerable": true,
+      "reference_answer": "It attaches to the nearest eligible preceding if, regardless of indentation.",
+      "evidence_pages": [105]
+    },
+    {
+      "id": "JAVA-035",
+      "category": "control-flow",
+      "difficulty": "medium",
+      "question": "Why does the book reject an expression like x < y && z for testing whether x is less than two values?",
+      "answerable": true,
+      "reference_answer": "The operands of && must be boolean expressions; compare x with each value separately and combine those comparisons.",
+      "evidence_pages": [108]
+    },
+    {
+      "id": "JAVA-036",
+      "category": "methods",
+      "difficulty": "easy",
+      "question": "What role does a parameter play in the book's black-box explanation of a subroutine?",
+      "answerable": true,
+      "reference_answer": "It passes information into the subroutine so its behavior can be adapted to a particular call.",
+      "evidence_pages": [143]
+    },
+    {
+      "id": "JAVA-037",
+      "category": "methods",
+      "difficulty": "medium",
+      "question": "How does the textbook define a function and its return type?",
+      "answerable": true,
+      "reference_answer": "A function is a subroutine that returns a value; its return type specifies the type of that value.",
+      "evidence_pages": [150]
+    },
+    {
+      "id": "JAVA-038",
+      "category": "inheritance",
+      "difficulty": "medium",
+      "question": "Why does the Vehicle-to-Car assignment in the textbook need special handling?",
+      "answerable": true,
+      "reference_answer": "A Vehicle reference might refer to a vehicle that is not a Car. A cast can be used when the object is actually a Car; instanceof can test that condition.",
+      "evidence_pages": [215]
+    },
+    {
+      "id": "JAVA-039",
+      "category": "constructors",
+      "difficulty": "medium",
+      "question": "In the book's subclass-constructor example, where must an explicit super constructor invocation appear?",
+      "answerable": true,
+      "reference_answer": "As the first statement of the subclass constructor.",
+      "evidence_pages": [225]
+    },
+    {
+      "id": "JAVA-040",
+      "category": "classes",
+      "difficulty": "medium",
+      "question": "What does the anonymous-class construction described by the book do in one expression?",
+      "answerable": true,
+      "reference_answer": "It defines an unnamed class based on a class or interface and creates an instance of it.",
+      "evidence_pages": [230]
+    },
+    {
+      "id": "JAVA-041",
+      "category": "multi-page-control-flow",
+      "difficulty": "hard",
+      "question": "Contrast the minimum number of iterations of a while loop with a do-while loop as described in the textbook.",
+      "answerable": true,
+      "reference_answer": "A while loop may run zero times if its initial test is false; a do-while loop runs at least once because its test is at the end.",
+      "evidence_pages": [90, 93]
+    },
+    {
+      "id": "JAVA-042",
+      "category": "multi-page-methods",
+      "difficulty": "hard",
+      "question": "How do parameters and return values carry information across a subroutine's interface?",
+      "answerable": true,
+      "reference_answer": "Parameters provide information to the subroutine; a function's return value communicates a result back to its caller.",
+      "evidence_pages": [143, 150]
+    },
+    {
+      "id": "JAVA-043",
+      "category": "multi-page-control-flow",
+      "difficulty": "hard",
+      "question": "Why are braces useful both in a multi-statement loop body and when an else should belong to an outer if?",
+      "answerable": true,
+      "reference_answer": "Braces group the loop's statements into one body and can delimit a nested if so that the else attaches to the intended outer if rather than the inner one.",
+      "evidence_pages": [84, 105]
+    },
+    {
+      "id": "JAVA-044",
+      "category": "multi-page-types",
+      "difficulty": "hard",
+      "question": "How does the book distinguish the storage sizes of the primitive int and double types, and what does it say a String is?",
+      "answerable": true,
+      "reference_answer": "It describes int as four bytes and double as eight bytes; String is a class and its values are objects.",
+      "evidence_pages": [41, 45]
+    },
+    {
+      "id": "JAVA-045",
+      "category": "multi-page-input",
+      "difficulty": "hard",
+      "question": "What happens when TextIO receives an invalid integer, and why is repeated validation still needed when the algorithm requires a positive integer?",
+      "answerable": true,
+      "reference_answer": "TextIO asks again for an invalid int, but a valid int can still be zero or negative. The algorithm therefore repeats its own positivity check until the value meets that requirement.",
+      "evidence_pages": [55, 86]
+    },
+    {
+      "id": "JAVA-046",
+      "category": "unanswerable-post-publication",
+      "difficulty": "medium",
+      "question": "According to this 2007 edition, on what exact date was Java 21 actually released?",
+      "answerable": false,
+      "reference_answer": "The supplied 2007 edition cannot establish the actual release date of a later release. State that the source is insufficient rather than inventing a date.",
+      "evidence_pages": [],
+      "negative_rationale": "Requests an actual post-publication event; full-corpus verification pending."
+    },
+    {
+      "id": "JAVA-047",
+      "category": "unanswerable-post-publication",
+      "difficulty": "medium",
+      "question": "What was the final official Java 17 release date, according to this 2007 textbook?",
+      "answerable": false,
+      "reference_answer": "The supplied edition predates that release and cannot establish its actual final release date. Abstain based on insufficient source evidence.",
+      "evidence_pages": [],
+      "negative_rationale": "Requests an actual post-publication event; full-corpus verification pending."
+    },
+    {
+      "id": "JAVA-048",
+      "category": "unanswerable-post-publication",
+      "difficulty": "medium",
+      "question": "What was the published final feature list of Java 11 when it shipped, according to this 2007 edition?",
+      "answerable": false,
+      "reference_answer": "The source predates the release and cannot establish its actual final shipped feature list. State that the evidence is insufficient.",
+      "evidence_pages": [],
+      "negative_rationale": "Requests a post-publication outcome; full-corpus verification pending."
+    },
+    {
+      "id": "JAVA-049",
+      "category": "unanswerable-post-publication",
+      "difficulty": "medium",
+      "question": "What did Oracle announce in its actual Java 21 launch announcement, according to this textbook?",
+      "answerable": false,
+      "reference_answer": "A 2007 edition cannot report a later actual launch announcement. State that the supplied source does not establish the answer.",
+      "evidence_pages": [],
+      "negative_rationale": "Requests a post-publication announcement; full-corpus verification pending."
+    },
+    {
+      "id": "JAVA-050",
+      "category": "unanswerable-post-publication",
+      "difficulty": "medium",
+      "question": "How did the actual 2024 Java developer survey rank Java versions, according to this 2007 edition?",
+      "answerable": false,
+      "reference_answer": "The edition predates the survey and cannot provide its actual results. Abstain and identify the lack of supporting evidence.",
+      "evidence_pages": [],
+      "negative_rationale": "Requests a post-publication survey outcome; full-corpus verification pending."
+    }
+  ]
+}
